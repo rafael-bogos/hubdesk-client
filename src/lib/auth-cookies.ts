@@ -1,9 +1,9 @@
 import type { NextResponse } from "next/server";
 
-export const ACCESS_TOKEN_COOKIE = "chamados_access_token";
-export const REFRESH_TOKEN_COOKIE = "chamados_refresh_token";
+export const ACCESS_TOKEN_COOKIE = "hubdesk_access_token";
+export const REFRESH_TOKEN_COOKIE = "hubdesk_refresh_token";
 
-// Deve bater com JWT_ACCESS_EXPIRES_IN / JWT_REFRESH_EXPIRES_IN do chamados-server.
+// Deve bater com JWT_ACCESS_EXPIRES_IN / JWT_REFRESH_EXPIRES_IN do hubdesk-server.
 const ACCESS_TOKEN_MAX_AGE_SECONDS = 15 * 60;
 const REFRESH_TOKEN_MAX_AGE_SECONDS = 7 * 24 * 60 * 60;
 

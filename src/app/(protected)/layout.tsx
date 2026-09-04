@@ -22,7 +22,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
       <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-black">
         <header className="flex items-center justify-between border-b bg-background px-6 py-3">
           <div className="flex items-center gap-6">
-            <span className="text-sm font-medium">Plataforma de Chamados</span>
+            <span className="text-sm font-medium">Hubdesk</span>
             <Link href="/tickets" className="text-sm text-muted-foreground hover:text-foreground">
               Chamados
             </Link>

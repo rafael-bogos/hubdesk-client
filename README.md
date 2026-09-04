@@ -1,6 +1,6 @@
-# chamados-client
+# Hubdesk Client
 
-Frontend da plataforma open source de chamados (helpdesk). Next.js (App Router) +
+Frontend da Hubdesk, plataforma open source de chamados (helpdesk). Next.js (App Router) +
 Tailwind CSS + shadcn/ui + TanStack Query + react-hook-form + zod.
 
 ## Rodando localmente
@@ -10,7 +10,7 @@ npm install
 npm run dev
 ```
 
-Abre em `http://localhost:3000`. Espera que a API de `chamados-server` esteja
+Abre em `http://localhost:3000`. Espera que a API de `hubdesk-server` esteja
 rodando em `http://localhost:3001`.
 
 ## Scripts
