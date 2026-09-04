@@ -7,11 +7,10 @@ function toggleTheme() {
   const root = document.documentElement;
   const next = root.classList.contains("dark") ? "light" : "dark";
   root.classList.toggle("dark", next === "dark");
-  try {
-    localStorage.setItem("theme", next);
-  } catch {
-    // localStorage indisponível (modo privado, etc.) — a preferência só não persiste entre sessões.
-  }
+  // Cookie (não localStorage) porque quem decide a classe "dark" no HTML
+  // servido é o layout raiz (Server Component, via next/headers cookies()) —
+  // isso evita qualquer script de "anti-flash" rodando antes da hidratação.
+  document.cookie = `theme=${next}; path=/; max-age=31536000; samesite=lax`;
 }
 
 export function ThemeToggle({ className }: { className?: string }) {
