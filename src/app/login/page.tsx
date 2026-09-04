@@ -49,7 +49,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/dashboard");
+    router.push("/tickets");
     router.refresh();
   }
 
@@ -58,7 +58,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Entrar</CardTitle>
-          <CardDescription>Acesse sua conta na plataforma de chamados.</CardDescription>
+          <CardDescription>Acesse sua conta no Hubdesk.</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)}>
