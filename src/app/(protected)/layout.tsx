@@ -26,6 +26,11 @@ export default async function ProtectedLayout({ children }: { children: React.Re
             <Link href="/tickets" className="text-sm text-muted-foreground hover:text-foreground">
               Chamados
             </Link>
+            {session.role === "ADMIN" && (
+              <Link href="/admin/users" className="text-sm text-muted-foreground hover:text-foreground">
+                Admin
+              </Link>
+            )}
           </div>
           <div className="flex items-center gap-3 text-sm">
             <span className="text-muted-foreground">
