@@ -30,6 +30,7 @@ import {
   STATUS_LABELS,
   TICKET_PRIORITIES,
   TICKET_STATUSES,
+  type CategorySummary,
   type ListTicketsResult,
   type TicketPriority,
   type TicketStatus,
@@ -44,19 +45,26 @@ export default function TicketsPage() {
 
   const status = searchParams.get("status") ?? ALL;
   const priority = searchParams.get("priority") ?? ALL;
+  const categoryId = searchParams.get("categoryId") ?? ALL;
   const page = Number(searchParams.get("page") ?? "1");
 
+  const categoriesQuery = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => apiClient.get<CategorySummary[]>("categories"),
+  });
+
   const query = useQuery({
-    queryKey: ["tickets", { status, priority, page }],
+    queryKey: ["tickets", { status, priority, categoryId, page }],
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
       if (status !== ALL) params.set("status", status);
       if (priority !== ALL) params.set("priority", priority);
+      if (categoryId !== ALL) params.set("categoryId", categoryId);
       return apiClient.get<ListTicketsResult>(`tickets?${params.toString()}`);
     },
   });
 
-  function updateFilter(key: "status" | "priority", value: string | null) {
+  function updateFilter(key: "status" | "priority" | "categoryId", value: string | null) {
     const params = new URLSearchParams(searchParams);
     if (!value || value === ALL) params.delete(key);
     else params.set(key, value);
@@ -120,6 +128,25 @@ export default function TicketsPage() {
             {TICKET_PRIORITIES.map((p: TicketPriority) => (
               <SelectItem key={p} value={p}>
                 {PRIORITY_LABELS[p]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={categoryId} onValueChange={(value) => updateFilter("categoryId", value)}>
+          <SelectTrigger className="w-44">
+            <SelectValue placeholder="Categoria">
+              {(value: string | null) => {
+                if (!value || value === ALL) return "Todas as categorias";
+                return categoriesQuery.data?.find((c) => c.id === value)?.name ?? null;
+              }}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>Todas as categorias</SelectItem>
+            {(categoriesQuery.data ?? []).map((category) => (
+              <SelectItem key={category.id} value={category.id}>
+                {category.name}
               </SelectItem>
             ))}
           </SelectContent>

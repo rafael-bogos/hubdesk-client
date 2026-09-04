@@ -114,6 +114,7 @@ function TicketHeader({
             <p className="mt-1 text-xs text-muted-foreground">
               Aberto em {formatDateTime(ticket.createdAt)} · Solicitante{" "}
               {ticket.requester?.name ?? shortId(ticket.requesterId)}
+              {ticket.category && <> · Categoria {ticket.category.name}</>}
             </p>
           </div>
           <div className="flex gap-2">

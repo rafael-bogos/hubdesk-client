@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -18,18 +18,31 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError, apiClient } from "@/lib/api-client";
-import { PRIORITY_LABELS, TICKET_PRIORITIES, type Ticket } from "@/lib/tickets/types";
+import {
+  PRIORITY_LABELS,
+  TICKET_PRIORITIES,
+  type CategorySummary,
+  type Ticket,
+} from "@/lib/tickets/types";
+
+const NO_CATEGORY = "NONE";
 
 const createTicketSchema = z.object({
   title: z.string().min(3, "Título deve ter ao menos 3 caracteres"),
   description: z.string().min(1, "Descrição é obrigatória"),
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]),
+  categoryId: z.string(),
 });
 
 type CreateTicketValues = z.infer<typeof createTicketSchema>;
 
 export default function NewTicketPage() {
   const router = useRouter();
+
+  const categoriesQuery = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => apiClient.get<CategorySummary[]>("categories"),
+  });
 
   const {
     register,
@@ -39,11 +52,15 @@ export default function NewTicketPage() {
     formState: { errors, isSubmitting },
   } = useForm<CreateTicketValues>({
     resolver: zodResolver(createTicketSchema),
-    defaultValues: { priority: "MEDIUM" },
+    defaultValues: { priority: "MEDIUM", categoryId: NO_CATEGORY },
   });
 
   const mutation = useMutation({
-    mutationFn: (values: CreateTicketValues) => apiClient.post<Ticket>("tickets", values),
+    mutationFn: ({ categoryId, ...values }: CreateTicketValues) =>
+      apiClient.post<Ticket>("tickets", {
+        ...values,
+        categoryId: categoryId === NO_CATEGORY ? undefined : categoryId,
+      }),
     onSuccess: (ticket) => {
       router.push(`/tickets/${ticket.id}`);
     },
@@ -97,6 +114,34 @@ export default function NewTicketPage() {
                       {TICKET_PRIORITIES.map((priority) => (
                         <SelectItem key={priority} value={priority}>
                           {PRIORITY_LABELS[priority]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="categoryId">Categoria</Label>
+              <Controller
+                name="categoryId"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger id="categoryId" className="w-full">
+                      <SelectValue placeholder="Sem categoria">
+                        {(value: string | null) => {
+                          if (!value || value === NO_CATEGORY) return "Sem categoria";
+                          return categoriesQuery.data?.find((c) => c.id === value)?.name ?? null;
+                        }}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_CATEGORY}>Sem categoria</SelectItem>
+                      {(categoriesQuery.data ?? []).map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
                         </SelectItem>
                       ))}
                     </SelectContent>

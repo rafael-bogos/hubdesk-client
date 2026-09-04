@@ -32,6 +32,11 @@ export interface UserSummary {
   email: string;
 }
 
+export interface CategorySummary {
+  id: string;
+  name: string;
+}
+
 export interface Ticket {
   id: string;
   title: string;
@@ -48,6 +53,7 @@ export interface Ticket {
   // mutações (status/assign), que devolvem o ticket "cru" do repositório.
   requester?: UserSummary | null;
   assignee?: UserSummary | null;
+  category?: CategorySummary | null;
 }
 
 export interface Comment {
