@@ -139,11 +139,17 @@ export default function NewTicketPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value={NO_CATEGORY}>Sem categoria</SelectItem>
-                      {(categoriesQuery.data ?? []).map((category) => (
-                        <SelectItem key={category.id} value={category.id}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
+                      {categoriesQuery.data?.length === 0 ? (
+                        <div className="px-1.5 py-1 text-sm text-muted-foreground">
+                          Nenhuma categoria cadastrada.
+                        </div>
+                      ) : (
+                        (categoriesQuery.data ?? []).map((category) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 )}

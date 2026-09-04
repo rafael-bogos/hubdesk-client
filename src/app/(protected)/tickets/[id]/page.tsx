@@ -169,11 +169,17 @@ function TicketHeader({
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      {(agentsQuery.data ?? []).map((agent) => (
-                        <SelectItem key={agent.id} value={agent.id}>
-                          {agent.name}
-                        </SelectItem>
-                      ))}
+                      {agentsQuery.data?.length === 0 ? (
+                        <div className="px-1.5 py-1 text-sm text-muted-foreground">
+                          Nenhum agente disponível.
+                        </div>
+                      ) : (
+                        (agentsQuery.data ?? []).map((agent) => (
+                          <SelectItem key={agent.id} value={agent.id}>
+                            {agent.name}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                   <Button
