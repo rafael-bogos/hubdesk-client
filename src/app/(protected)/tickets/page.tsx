@@ -1,11 +1,14 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { Inbox } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PriorityBadge } from "@/components/tickets/priority-badge";
 import { StatusBadge } from "@/components/tickets/status-badge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { UserAvatar } from "@/components/user-avatar";
 import {
   Select,
   SelectContent,
@@ -73,7 +76,14 @@ export default function TicketsPage() {
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Chamados</h1>
+        <div className="flex items-center gap-2.5">
+          <h1 className="text-xl font-semibold">Chamados</h1>
+          {query.data && (
+            <Badge variant="secondary" className="rounded-full">
+              {query.data.total}
+            </Badge>
+          )}
+        </div>
         <Button render={<Link href="/tickets/new">Novo chamado</Link>} />
       </div>
 
@@ -129,15 +139,26 @@ export default function TicketsPage() {
               <TableBody>
                 {query.data.items.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground">
-                      Nenhum chamado encontrado.
+                    <TableCell colSpan={6} className="h-40 text-center">
+                      <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                        <Inbox className="size-8" />
+                        <p className="text-sm">Nenhum chamado encontrado.</p>
+                      </div>
                     </TableCell>
                   </TableRow>
                 )}
                 {query.data.items.map((ticket) => (
-                  <TableRow key={ticket.id} className="cursor-pointer hover:bg-muted/50">
+                  <TableRow
+                    key={ticket.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => router.push(`/tickets/${ticket.id}`)}
+                  >
                     <TableCell>
-                      <Link href={`/tickets/${ticket.id}`} className="font-medium hover:underline">
+                      <Link
+                        href={`/tickets/${ticket.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="font-medium hover:underline"
+                      >
                         {ticket.title}
                       </Link>
                     </TableCell>
@@ -148,10 +169,24 @@ export default function TicketsPage() {
                       <PriorityBadge priority={ticket.priority} />
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {ticket.requester?.name ?? "—"}
+                      {ticket.requester ? (
+                        <div className="flex items-center gap-2">
+                          <UserAvatar name={ticket.requester.name} className="size-6 text-[10px]" />
+                          <span>{ticket.requester.name}</span>
+                        </div>
+                      ) : (
+                        "—"
+                      )}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {ticket.assignee?.name ?? "—"}
+                      {ticket.assignee ? (
+                        <div className="flex items-center gap-2">
+                          <UserAvatar name={ticket.assignee.name} className="size-6 text-[10px]" />
+                          <span>{ticket.assignee.name}</span>
+                        </div>
+                      ) : (
+                        "—"
+                      )}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {formatDateTime(ticket.createdAt)}

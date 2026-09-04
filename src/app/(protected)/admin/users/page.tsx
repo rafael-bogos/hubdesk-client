@@ -2,11 +2,13 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Users as UsersIcon } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { RoleBadge } from "@/components/admin/role-badge";
+import { UserAvatar } from "@/components/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -96,7 +98,14 @@ export default function AdminUsersPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Usuários</h1>
+        <div className="flex items-center gap-2.5">
+          <h1 className="text-xl font-semibold">Usuários</h1>
+          {query.data && (
+            <Badge variant="secondary" className="rounded-full">
+              {query.data.total}
+            </Badge>
+          )}
+        </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger render={<Button>Novo usuário</Button>} />
           <DialogContent>
@@ -148,8 +157,7 @@ export default function AdminUsersPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>E-mail</TableHead>
+                  <TableHead>Usuário</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Criado em</TableHead>
@@ -159,15 +167,27 @@ export default function AdminUsersPage() {
               <TableBody>
                 {query.data.items.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground">
-                      Nenhum usuário encontrado.
+                    <TableCell colSpan={5} className="h-40 text-center">
+                      <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                        <UsersIcon className="size-8" />
+                        <p className="text-sm">Nenhum usuário encontrado.</p>
+                      </div>
                     </TableCell>
                   </TableRow>
                 )}
                 {query.data.items.map((user) => (
                   <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.name}</TableCell>
-                    <TableCell className="text-muted-foreground">{user.email}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <UserAvatar name={user.name} className="size-8 shrink-0" />
+                        <div className="flex min-w-0 flex-col">
+                          <span className="truncate font-medium">{user.name}</span>
+                          <span className="truncate text-xs text-muted-foreground">
+                            {user.email}
+                          </span>
+                        </div>
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <RoleBadge role={user.role} />
                     </TableCell>
