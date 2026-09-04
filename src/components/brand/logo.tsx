@@ -10,10 +10,24 @@ function LogoSymbol({ size = 32 }: { size?: number }) {
     >
       <path
         d="M13 8h38a5 5 0 015 5v25a5 5 0 01-5 5H27.5l-11.9 9.6A2 2 0 0112.4 51l1.6-8H13a5 5 0 01-5-5V13a5 5 0 015-5z"
-        fill="#1F2A44"
+        className="fill-[#1F2A44] dark:fill-[#0E7C66]"
       />
-      <rect x="19" y="18.5" width="27" height="4.6" rx="2.3" fill="#0E7C66" />
-      <rect x="19" y="28.5" width="16" height="4.6" rx="2.3" fill="#0E7C66" opacity="0.5" />
+      <rect
+        x="19"
+        y="18.5"
+        width="27"
+        height="4.6"
+        rx="2.3"
+        className="fill-[#0E7C66] dark:fill-[#F4F3EF]"
+      />
+      <rect
+        x="19"
+        y="28.5"
+        width="16"
+        height="4.6"
+        rx="2.3"
+        className="fill-[#0E7C66] opacity-50 dark:fill-[#F4F3EF] dark:opacity-55"
+      />
     </svg>
   );
 }
@@ -32,7 +46,7 @@ export function Logo({
       <LogoSymbol size={size} />
       {withWordmark && (
         <span
-          className="font-[family-name:var(--font-space-grotesk)] font-bold tracking-tight text-[#1F2A44]"
+          className="font-[family-name:var(--font-space-grotesk)] font-bold tracking-tight text-[#1F2A44] dark:text-[#F4F3EF]"
           style={{ fontSize: size * 0.6 }}
         >
           Hubdesk

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { Logo } from "@/components/brand/logo";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Sidebar,
   SidebarContent,
@@ -112,6 +113,7 @@ export function AppSidebar() {
               {ROLE_LABELS[session.role] ?? session.role}
             </span>
           </div>
+          <ThemeToggle className="ml-auto size-7 shrink-0" />
         </div>
         <SidebarMenu>
           <SidebarMenuItem>
