@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LogoutButton } from "@/components/logout-button";
 import { getSession } from "@/lib/session";
+import { SessionProvider } from "@/lib/session-context";
 
 const ROLE_LABELS: Record<string, string> = {
   ADMIN: "Administrador",
@@ -16,17 +18,24 @@ export default async function ProtectedLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-black">
-      <header className="flex items-center justify-between border-b bg-background px-6 py-3">
-        <span className="text-sm font-medium">Plataforma de Chamados</span>
-        <div className="flex items-center gap-3 text-sm">
-          <span className="text-muted-foreground">
-            {session.name} · {ROLE_LABELS[session.role] ?? session.role}
-          </span>
-          <LogoutButton />
-        </div>
-      </header>
-      <main className="flex-1">{children}</main>
-    </div>
+    <SessionProvider user={session}>
+      <div className="flex min-h-screen flex-col bg-zinc-50 dark:bg-black">
+        <header className="flex items-center justify-between border-b bg-background px-6 py-3">
+          <div className="flex items-center gap-6">
+            <span className="text-sm font-medium">Plataforma de Chamados</span>
+            <Link href="/tickets" className="text-sm text-muted-foreground hover:text-foreground">
+              Chamados
+            </Link>
+          </div>
+          <div className="flex items-center gap-3 text-sm">
+            <span className="text-muted-foreground">
+              {session.name} · {ROLE_LABELS[session.role] ?? session.role}
+            </span>
+            <LogoutButton />
+          </div>
+        </header>
+        <main className="flex-1">{children}</main>
+      </div>
+    </SessionProvider>
   );
 }
