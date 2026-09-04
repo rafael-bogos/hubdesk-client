@@ -37,8 +37,8 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="px-3 py-4">
-        <Logo size={26} />
+      <SidebarHeader className="flex items-center justify-center px-3 py-5">
+        <Logo size={40} />
       </SidebarHeader>
 
       <SidebarContent>
