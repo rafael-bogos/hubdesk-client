@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -29,6 +30,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -56,48 +58,109 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center gap-6 bg-zinc-50 px-6 dark:bg-black">
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-zinc-50 px-6 dark:bg-black">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 -z-10 [background:radial-gradient(60%_50%_at_50%_0%,color-mix(in_oklch,#0E7C66,transparent_88%),transparent),radial-gradient(45%_40%_at_85%_100%,color-mix(in_oklch,#1F2A44,transparent_90%),transparent)]"
+      />
       <ThemeToggle className="absolute top-4 right-4" />
-      <Logo size={36} />
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>Entrar</CardTitle>
-          <CardDescription>Acesse sua conta.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)}>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="email">E-mail</Label>
-              <Input id="email" type="email" autoComplete="email" {...register("email")} />
-              {errors.email && (
-                <p className="text-sm text-destructive">{errors.email.message}</p>
+
+      <div className="flex w-full max-w-sm flex-col items-center gap-6 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-500">
+        <Logo size={36} />
+
+        <Card className="w-full border-none py-8 shadow-xl shadow-black/5 ring-1 ring-foreground/[0.08] dark:shadow-black/40">
+          <CardHeader className="items-center text-center">
+            <CardTitle className="text-xl">Bem-vindo de volta</CardTitle>
+            <CardDescription>Entre com sua conta para continuar.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)}>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="email">E-mail</Label>
+                <div className="relative">
+                  <Mail
+                    aria-hidden="true"
+                    className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground"
+                  />
+                  <Input
+                    id="email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="voce@empresa.com"
+                    className="pl-8"
+                    aria-invalid={errors.email ? true : undefined}
+                    aria-describedby={errors.email ? "email-error" : undefined}
+                    {...register("email")}
+                  />
+                </div>
+                {errors.email && (
+                  <p id="email-error" className="text-sm text-destructive">
+                    {errors.email.message}
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="password">Senha</Label>
+                <div className="relative">
+                  <Lock
+                    aria-hidden="true"
+                    className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground"
+                  />
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                    placeholder="••••••••"
+                    className="px-8"
+                    aria-invalid={errors.password ? true : undefined}
+                    aria-describedby={errors.password ? "password-error" : undefined}
+                    {...register("password")}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="absolute inset-y-0 right-0 flex w-8 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+                    aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                    aria-pressed={showPassword}
+                  >
+                    {showPassword ? (
+                      <EyeOff aria-hidden="true" className="size-3.5" />
+                    ) : (
+                      <Eye aria-hidden="true" className="size-3.5" />
+                    )}
+                  </button>
+                </div>
+                {errors.password && (
+                  <p id="password-error" className="text-sm text-destructive">
+                    {errors.password.message}
+                  </p>
+                )}
+              </div>
+              {serverError && (
+                <p
+                  role="alert"
+                  className="rounded-lg bg-destructive/10 px-2.5 py-1.5 text-sm text-destructive"
+                >
+                  {serverError}
+                </p>
               )}
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="password">Senha</Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                {...register("password")}
-              />
-              {errors.password && (
-                <p className="text-sm text-destructive">{errors.password.message}</p>
-              )}
-            </div>
-            {serverError && <p className="text-sm text-destructive">{serverError}</p>}
-            <Button type="submit" disabled={isSubmitting} className="mt-2">
-              {isSubmitting ? "Entrando..." : "Entrar"}
-            </Button>
-          </form>
-          <p className="mt-4 text-center text-sm text-muted-foreground">
-            Não tem conta?{" "}
-            <Link href="/register" className="underline underline-offset-4">
-              Criar conta
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
+              <Button type="submit" disabled={isSubmitting} size="lg" className="mt-2">
+                {isSubmitting ? "Entrando..." : "Entrar"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        <p className="text-center text-sm text-muted-foreground">
+          Não tem conta?{" "}
+          <Link
+            href="/register"
+            className="font-medium text-foreground underline-offset-4 hover:underline"
+          >
+            Criar conta
+          </Link>
+        </p>
+      </div>
     </div>
   );
 }
