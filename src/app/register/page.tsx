@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { Logo } from "@/components/brand/logo";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -55,7 +56,8 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-6 dark:bg-black">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-zinc-50 px-6 dark:bg-black">
+      <Logo size={36} />
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Criar conta</CardTitle>
