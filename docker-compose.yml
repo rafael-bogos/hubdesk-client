@@ -1,0 +1,20 @@
+name: hubdesk-client
+
+services:
+  client:
+    build:
+      context: .
+      target: production
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: production
+      BACKEND_API_URL: ${BACKEND_API_URL:-http://host.docker.internal:3001}
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    healthcheck:
+      test: ['CMD', 'node', '-e', "require('http').get('http://localhost:3000/login', (r) => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
