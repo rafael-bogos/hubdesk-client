@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
+import { BackToTicketsLink } from "@/components/tickets/back-to-tickets-link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -73,6 +74,7 @@ export default function NewTicketPage() {
 
   return (
     <div className="mx-auto max-w-xl px-6 py-8">
+      <BackToTicketsLink />
       <Card>
         <CardHeader>
           <CardTitle>Novo chamado</CardTitle>

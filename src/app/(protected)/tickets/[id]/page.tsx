@@ -3,6 +3,7 @@
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { useRef, useState } from "react";
+import { BackToTicketsLink } from "@/components/tickets/back-to-tickets-link";
 import { PriorityBadge } from "@/components/tickets/priority-badge";
 import { StatusBadge } from "@/components/tickets/status-badge";
 import { Badge } from "@/components/ui/badge";
@@ -49,14 +50,22 @@ export default function TicketDetailPage() {
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["ticket", id] });
 
   if (query.isLoading) {
-    return <p className="mx-auto max-w-3xl px-6 py-8 text-sm text-muted-foreground">Carregando…</p>;
+    return (
+      <div className="mx-auto max-w-3xl px-6 py-8">
+        <BackToTicketsLink />
+        <p className="text-sm text-muted-foreground">Carregando…</p>
+      </div>
+    );
   }
 
   if (query.isError || !query.data) {
     return (
-      <p className="mx-auto max-w-3xl px-6 py-8 text-sm text-destructive">
-        Chamado não encontrado ou você não tem acesso a ele.
-      </p>
+      <div className="mx-auto max-w-3xl px-6 py-8">
+        <BackToTicketsLink />
+        <p className="text-sm text-destructive">
+          Chamado não encontrado ou você não tem acesso a ele.
+        </p>
+      </div>
     );
   }
 
@@ -64,6 +73,7 @@ export default function TicketDetailPage() {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-8">
+      <BackToTicketsLink />
       <TicketHeader ticket={ticket} isAgentOrAdmin={isAgentOrAdmin} onChange={invalidate} />
       <CommentsSection
         ticketId={ticket.id}
