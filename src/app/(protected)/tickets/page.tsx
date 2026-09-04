@@ -22,7 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { apiClient } from "@/lib/api-client";
-import { formatDateTime, shortId } from "@/lib/tickets/format";
+import { formatDateTime } from "@/lib/tickets/format";
 import {
   PRIORITY_LABELS,
   STATUS_LABELS,
@@ -148,10 +148,10 @@ export default function TicketsPage() {
                       <PriorityBadge priority={ticket.priority} />
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {shortId(ticket.requesterId)}
+                      {ticket.requester?.name ?? "—"}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {ticket.assigneeId ? shortId(ticket.assigneeId) : "—"}
+                      {ticket.assignee?.name ?? "—"}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {formatDateTime(ticket.createdAt)}

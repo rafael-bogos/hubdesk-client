@@ -26,6 +26,12 @@ export const PRIORITY_LABELS: Record<TicketPriority, string> = {
   URGENT: "Urgente",
 };
 
+export interface UserSummary {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export interface Ticket {
   id: string;
   title: string;
@@ -38,6 +44,10 @@ export interface Ticket {
   createdAt: string;
   updatedAt: string;
   closedAt: string | null;
+  // Presentes em GET /tickets e GET /tickets/:id; ausentes nas respostas de
+  // mutações (status/assign), que devolvem o ticket "cru" do repositório.
+  requester?: UserSummary | null;
+  assignee?: UserSummary | null;
 }
 
 export interface Comment {

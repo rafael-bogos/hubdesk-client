@@ -9,7 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -31,7 +30,10 @@ import {
   type Ticket,
   type TicketDetail,
   type TicketStatus,
+  type UserSummary,
 } from "@/lib/tickets/types";
+
+const UNASSIGNED = "UNASSIGNED";
 
 export default function TicketDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -83,8 +85,13 @@ function TicketHeader({
   isAgentOrAdmin: boolean;
   onChange: () => void;
 }) {
-  const [assigneeId, setAssigneeId] = useState("");
   const session = useSession();
+
+  const agentsQuery = useQuery({
+    queryKey: ["agents"],
+    queryFn: () => apiClient.get<UserSummary[]>("users/agents"),
+    enabled: isAgentOrAdmin,
+  });
 
   const updateStatus = useMutation({
     mutationFn: (status: TicketStatus) =>
@@ -95,10 +102,7 @@ function TicketHeader({
   const assign = useMutation({
     mutationFn: (targetAssigneeId: string) =>
       apiClient.patch<Ticket>(`tickets/${ticket.id}/assign`, { assigneeId: targetAssigneeId }),
-    onSuccess: () => {
-      onChange();
-      setAssigneeId("");
-    },
+    onSuccess: onChange,
   });
 
   return (
@@ -108,7 +112,8 @@ function TicketHeader({
           <div>
             <CardTitle className="text-lg">{ticket.title}</CardTitle>
             <p className="mt-1 text-xs text-muted-foreground">
-              Aberto em {formatDateTime(ticket.createdAt)} · Solicitante {shortId(ticket.requesterId)}
+              Aberto em {formatDateTime(ticket.createdAt)} · Solicitante{" "}
+              {ticket.requester?.name ?? shortId(ticket.requesterId)}
             </p>
           </div>
           <div className="flex gap-2">
@@ -144,36 +149,29 @@ function TicketHeader({
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <Label>Responsável</Label>
-                <p className="text-sm text-muted-foreground">
-                  {ticket.assigneeId ? shortId(ticket.assigneeId) : "Ninguém atribuído"}
-                </p>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="assignee-id">
-                  Atribuir a (id do usuário — listagem de agentes chega na área admin)
-                </Label>
+                <Label htmlFor="assignee-select">Responsável</Label>
                 <div className="flex gap-2">
-                  <Input
-                    id="assignee-id"
-                    value={assigneeId}
-                    onChange={(e) => setAssigneeId(e.target.value)}
-                    placeholder="id do agente"
-                    className="w-56"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={!assigneeId || assign.isPending}
-                    onClick={() => assign.mutate(assigneeId)}
+                  <Select
+                    value={ticket.assigneeId ?? UNASSIGNED}
+                    onValueChange={(value) => {
+                      if (value && value !== UNASSIGNED) assign.mutate(value);
+                    }}
                   >
-                    Atribuir
-                  </Button>
+                    <SelectTrigger id="assignee-select" className="w-56">
+                      <SelectValue placeholder="Ninguém atribuído" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(agentsQuery.data ?? []).map((agent) => (
+                        <SelectItem key={agent.id} value={agent.id}>
+                          {agent.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <Button
                     type="button"
                     variant="outline"
-                    disabled={assign.isPending}
+                    disabled={assign.isPending || ticket.assigneeId === session.id}
                     onClick={() => assign.mutate(session.id)}
                   >
                     Atribuir a mim
