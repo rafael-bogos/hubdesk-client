@@ -83,7 +83,7 @@ export default function TicketsPage() {
             </Badge>
           )}
         </div>
-        <Button render={<Link href="/tickets/new">Novo chamado</Link>} />
+        <Button nativeButton={false} render={<Link href="/tickets/new">Novo chamado</Link>} />
       </div>
 
       <div className="mb-4 flex gap-3">
