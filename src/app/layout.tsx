@@ -24,6 +24,8 @@ export const metadata: Metadata = {
   description: "Hubdesk — plataforma open source de gerenciamento de chamados (helpdesk).",
 };
 
+const THEME_SCRIPT = `(function(){try{var s=localStorage.getItem('theme');var d=s==='dark'||(!s&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark')}catch(e){}})()`;
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
@@ -31,6 +33,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} h-full antialiased`}
     >
+      <head>
+        <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className="min-h-full flex flex-col">
         <Providers>{children}</Providers>
       </body>

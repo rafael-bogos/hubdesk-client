@@ -1,25 +1,30 @@
 "use client";
 
 import { Moon, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 
-export function ThemeToggle({ className }: { className?: string }) {
-  const { resolvedTheme, setTheme } = useTheme();
-  // resolvedTheme só existe depois que o next-themes lê a preferência real no
-  // cliente — undefined no primeiro render evita mismatch de hidratação.
-  const mounted = resolvedTheme !== undefined;
+function toggleTheme() {
+  const root = document.documentElement;
+  const next = root.classList.contains("dark") ? "light" : "dark";
+  root.classList.toggle("dark", next === "dark");
+  try {
+    localStorage.setItem("theme", next);
+  } catch {
+    // localStorage indisponível (modo privado, etc.) — a preferência só não persiste entre sessões.
+  }
+}
 
+export function ThemeToggle({ className }: { className?: string }) {
   return (
     <Button
       variant="outline"
       size="icon"
       className={className}
       aria-label="Alternar tema"
-      disabled={!mounted}
-      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+      onClick={toggleTheme}
     >
-      {mounted && resolvedTheme === "dark" ? <Sun /> : <Moon />}
+      <Sun className="dark:hidden" />
+      <Moon className="hidden dark:block" />
     </Button>
   );
 }
