@@ -8,7 +8,6 @@ import { PriorityBadge } from "@/components/tickets/priority-badge";
 import { StatusBadge } from "@/components/tickets/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { UserAvatar } from "@/components/user-avatar";
 import {
   Select,
   SelectContent,
@@ -179,24 +178,10 @@ export default function TicketsPage() {
                       <PriorityBadge priority={ticket.priority} />
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {ticket.requester ? (
-                        <div className="flex items-center gap-2">
-                          <UserAvatar name={ticket.requester.name} className="size-6 text-[10px]" />
-                          <span>{ticket.requester.name}</span>
-                        </div>
-                      ) : (
-                        "—"
-                      )}
+                      {ticket.requester?.name ?? "—"}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {ticket.assignee ? (
-                        <div className="flex items-center gap-2">
-                          <UserAvatar name={ticket.assignee.name} className="size-6 text-[10px]" />
-                          <span>{ticket.assignee.name}</span>
-                        </div>
-                      ) : (
-                        "—"
-                      )}
+                      {ticket.assignee?.name ?? "—"}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {formatDateTime(ticket.createdAt)}
