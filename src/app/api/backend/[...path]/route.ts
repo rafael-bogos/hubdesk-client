@@ -54,11 +54,15 @@ async function handle(request: NextRequest, context: RouteContext) {
   }
 
   const responseBody = await backendResponse.arrayBuffer();
+  const responseHeaders = new Headers({
+    "content-type": backendResponse.headers.get("content-type") ?? "application/json",
+  });
+  const contentDisposition = backendResponse.headers.get("content-disposition");
+  if (contentDisposition) responseHeaders.set("content-disposition", contentDisposition);
+
   const response = new NextResponse(responseBody, {
     status: backendResponse.status,
-    headers: {
-      "content-type": backendResponse.headers.get("content-type") ?? "application/json",
-    },
+    headers: responseHeaders,
   });
 
   if (refreshedTokens) {
