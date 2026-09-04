@@ -87,7 +87,11 @@ export default function NewTicketPage() {
                 render={({ field }) => (
                   <Select value={field.value} onValueChange={field.onChange}>
                     <SelectTrigger id="priority" className="w-full">
-                      <SelectValue />
+                      <SelectValue>
+                        {(value: string | null) =>
+                          value ? PRIORITY_LABELS[value as (typeof TICKET_PRIORITIES)[number]] : null
+                        }
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {TICKET_PRIORITIES.map((priority) => (

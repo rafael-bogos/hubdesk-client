@@ -90,7 +90,11 @@ export default function TicketsPage() {
       <div className="mb-4 flex gap-3">
         <Select value={status} onValueChange={(value) => updateFilter("status", value)}>
           <SelectTrigger className="w-44">
-            <SelectValue placeholder="Status" />
+            <SelectValue placeholder="Status">
+              {(value: string | null) =>
+                !value || value === ALL ? "Todos os status" : STATUS_LABELS[value as TicketStatus]
+              }
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>Todos os status</SelectItem>
@@ -104,7 +108,13 @@ export default function TicketsPage() {
 
         <Select value={priority} onValueChange={(value) => updateFilter("priority", value)}>
           <SelectTrigger className="w-44">
-            <SelectValue placeholder="Prioridade" />
+            <SelectValue placeholder="Prioridade">
+              {(value: string | null) =>
+                !value || value === ALL
+                  ? "Todas as prioridades"
+                  : PRIORITY_LABELS[value as TicketPriority]
+              }
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>Todas as prioridades</SelectItem>

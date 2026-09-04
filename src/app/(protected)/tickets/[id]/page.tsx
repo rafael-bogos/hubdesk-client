@@ -136,7 +136,9 @@ function TicketHeader({
                   onValueChange={(value) => updateStatus.mutate(value as TicketStatus)}
                 >
                   <SelectTrigger className="w-48">
-                    <SelectValue />
+                    <SelectValue>
+                      {(value: string | null) => (value ? STATUS_LABELS[value as TicketStatus] : null)}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {TICKET_STATUSES.map((status) => (
@@ -158,7 +160,12 @@ function TicketHeader({
                     }}
                   >
                     <SelectTrigger id="assignee-select" className="w-56">
-                      <SelectValue placeholder="Ninguém atribuído" />
+                      <SelectValue placeholder="Ninguém atribuído">
+                        {(value: string | null) =>
+                          agentsQuery.data?.find((agent) => agent.id === value)?.name ??
+                          "Ninguém atribuído"
+                        }
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {(agentsQuery.data ?? []).map((agent) => (

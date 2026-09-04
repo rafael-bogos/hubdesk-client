@@ -122,7 +122,11 @@ export default function AdminUsersPage() {
       <div className="flex gap-3">
         <Select value={roleFilter} onValueChange={(value) => updateFilter("role", value)}>
           <SelectTrigger className="w-44">
-            <SelectValue placeholder="Role" />
+            <SelectValue placeholder="Role">
+              {(value: string | null) =>
+                !value || value === ALL ? "Todas as roles" : ROLE_LABELS[value as (typeof ROLES)[number]]
+              }
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>Todas as roles</SelectItem>
@@ -136,7 +140,12 @@ export default function AdminUsersPage() {
 
         <Select value={activeFilter} onValueChange={(value) => updateFilter("active", value)}>
           <SelectTrigger className="w-44">
-            <SelectValue placeholder="Status" />
+            <SelectValue placeholder="Status">
+              {(value: string | null) => {
+                if (!value || value === ALL) return "Todos os status";
+                return value === "true" ? "Ativos" : "Inativos";
+              }}
+            </SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>Todos os status</SelectItem>
@@ -319,7 +328,11 @@ function CreateUserForm({ onSuccess }: { onSuccess: () => void }) {
             render={({ field }) => (
               <Select value={field.value} onValueChange={field.onChange}>
                 <SelectTrigger id="new-role" className="w-full">
-                  <SelectValue />
+                  <SelectValue>
+                    {(value: string | null) =>
+                      value ? ROLE_LABELS[value as (typeof ROLES)[number]] : null
+                    }
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {ROLES.map((role) => (
@@ -403,7 +416,11 @@ function EditUserForm({ user, onSuccess }: { user: AdminUser; onSuccess: () => v
             render={({ field }) => (
               <Select value={field.value} onValueChange={field.onChange}>
                 <SelectTrigger id="edit-role" className="w-full">
-                  <SelectValue />
+                  <SelectValue>
+                    {(value: string | null) =>
+                      value ? ROLE_LABELS[value as (typeof ROLES)[number]] : null
+                    }
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {ROLES.map((role) => (
