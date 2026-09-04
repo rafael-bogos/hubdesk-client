@@ -10,21 +10,19 @@ separadamente). Autenticação segue o padrão BFF: os tokens JWT ficam em
 cookies httpOnly geridos pelo próprio Next.js, o navegador nunca fala
 diretamente com o backend.
 
-## Rodando tudo com um comando (Docker Compose)
+## Rodando com Docker Compose
 
-O `docker-compose.yml` que sobe este app junto com a API e o Postgres vive no
-repositório irmão. Clone os dois lado a lado e rode a partir de lá:
+Suba o `hubdesk-server` primeiro (tem seu próprio `docker-compose.yml`, veja o
+`README.md` dele — inclui como pegar as credenciais do `ADMIN` criado
+automaticamente). Depois, deste repositório:
 
 ```bash
-git clone <url-do-hubdesk-server> hubdesk-server
-git clone <url-deste-repo> hubdesk-client
-cd hubdesk-server
 docker compose up --build
 ```
 
-Abre em `http://localhost:3000`. Veja o `README.md` do `hubdesk-server` para
-como pegar as credenciais do usuário `ADMIN` criado automaticamente na
-primeira subida.
+Por padrão aponta para `http://host.docker.internal:3001`. Se a API estiver
+rodando em outro host/porta, defina `BACKEND_API_URL` num `.env` ao lado do
+`docker-compose.yml` antes do `up`. Abre em `http://localhost:3000`.
 
 ## Rodando em dev (sem Docker)
 
