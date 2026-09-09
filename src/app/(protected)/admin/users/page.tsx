@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -22,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 import {
   Select,
   SelectContent,
@@ -37,9 +39,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsIndicator, TabsList, TabsTab } from "@/components/ui/tabs";
 import { ApiError, apiClient } from "@/lib/api-client";
 import type { AdminUser, ListUsersResult } from "@/lib/admin/types";
 import { ROLES, ROLE_LABELS } from "@/lib/roles";
+import { useSession } from "@/lib/session-context";
 import { formatDateTime } from "@/lib/tickets/format";
 
 const ALL = "ALL";
@@ -66,20 +70,25 @@ export default function AdminUsersPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const session = useSession();
 
   const roleFilter = searchParams.get("role") ?? ALL;
-  const activeFilter = searchParams.get("active") ?? ALL;
+  const activeFilter = searchParams.get("active") === "false" ? "false" : "true";
   const page = Number(searchParams.get("page") ?? "1");
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+  const [deactivatingUser, setDeactivatingUser] = useState<AdminUser | null>(null);
 
   const query = useQuery({
     queryKey: ["admin-users", { roleFilter, activeFilter, page }],
     queryFn: () => {
-      const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(PAGE_SIZE),
+        active: activeFilter,
+      });
       if (roleFilter !== ALL) params.set("role", roleFilter);
-      if (activeFilter !== ALL) params.set("active", activeFilter);
       return apiClient.get<ListUsersResult>(`admin/users?${params.toString()}`);
     },
   });
@@ -94,6 +103,11 @@ export default function AdminUsersPage() {
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["admin-users"] });
   const totalPages = query.data ? Math.max(1, Math.ceil(query.data.total / PAGE_SIZE)) : 1;
+
+  const reactivate = useMutation({
+    mutationFn: (id: string) => apiClient.patch<AdminUser>(`admin/users/${id}`, { active: true }),
+    onSuccess: invalidate,
+  });
 
   return (
     <div className="flex flex-col gap-4">
@@ -119,38 +133,33 @@ export default function AdminUsersPage() {
         </Dialog>
       </div>
 
+      <Tabs
+        value={activeFilter}
+        onValueChange={(value) => updateFilter("active", value === "true" ? null : String(value))}
+      >
+        <TabsList>
+          <TabsIndicator />
+          <TabsTab value="true">Ativos</TabsTab>
+          <TabsTab value="false">Desativados</TabsTab>
+        </TabsList>
+      </Tabs>
+
       <div className="flex gap-3">
         <Select value={roleFilter} onValueChange={(value) => updateFilter("role", value)}>
           <SelectTrigger className="w-44">
-            <SelectValue placeholder="Role">
+            <SelectValue placeholder="Função">
               {(value: string | null) =>
-                !value || value === ALL ? "Todas as roles" : ROLE_LABELS[value as (typeof ROLES)[number]]
+                !value || value === ALL ? "Todas as funções" : ROLE_LABELS[value as (typeof ROLES)[number]]
               }
             </SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={ALL}>Todas as roles</SelectItem>
+            <SelectItem value={ALL}>Todas as funções</SelectItem>
             {ROLES.map((role) => (
               <SelectItem key={role} value={role}>
                 {ROLE_LABELS[role]}
               </SelectItem>
             ))}
-          </SelectContent>
-        </Select>
-
-        <Select value={activeFilter} onValueChange={(value) => updateFilter("active", value)}>
-          <SelectTrigger className="w-44">
-            <SelectValue placeholder="Status">
-              {(value: string | null) => {
-                if (!value || value === ALL) return "Todos os status";
-                return value === "true" ? "Ativos" : "Inativos";
-              }}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>Todos os status</SelectItem>
-            <SelectItem value="true">Ativos</SelectItem>
-            <SelectItem value="false">Inativos</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -167,7 +176,7 @@ export default function AdminUsersPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Usuário</TableHead>
-                  <TableHead>Role</TableHead>
+                  <TableHead>Função</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Criado em</TableHead>
                   <TableHead />
@@ -211,9 +220,33 @@ export default function AdminUsersPage() {
                       {formatDateTime(user.createdAt)}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="outline" size="sm" onClick={() => setEditingUser(user)}>
-                        Editar
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setEditingUser(user)}>
+                          Editar
+                        </Button>
+                        {user.id !== session.id && user.role !== "ADMIN" && (
+                          <>
+                            {user.active ? (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => setDeactivatingUser(user)}
+                              >
+                                Desativar
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={reactivate.isPending}
+                                onClick={() => reactivate.mutate(user.id)}
+                              >
+                                Reativar
+                              </Button>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -268,6 +301,23 @@ export default function AdminUsersPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <Dialog
+        open={deactivatingUser !== null}
+        onOpenChange={(open) => !open && setDeactivatingUser(null)}
+      >
+        <DialogContent>
+          {deactivatingUser && (
+            <DeactivateUserForm
+              user={deactivatingUser}
+              onSuccess={() => {
+                setDeactivatingUser(null);
+                invalidate();
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -315,13 +365,13 @@ function CreateUserForm({ onSuccess }: { onSuccess: () => void }) {
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="new-password">Senha</Label>
-          <Input id="new-password" type="password" {...register("password")} />
+          <PasswordInput id="new-password" autoComplete="new-password" {...register("password")} />
           {errors.password && (
             <p className="text-sm text-destructive">{errors.password.message}</p>
           )}
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="new-role">Role</Label>
+          <Label htmlFor="new-role">Função</Label>
           <Controller
             name="role"
             control={control}
@@ -409,7 +459,7 @@ function EditUserForm({ user, onSuccess }: { user: AdminUser; onSuccess: () => v
           {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="edit-role">Role</Label>
+          <Label htmlFor="edit-role">Função</Label>
           <Controller
             name="role"
             control={control}
@@ -450,7 +500,7 @@ function EditUserForm({ user, onSuccess }: { user: AdminUser; onSuccess: () => v
           </Label>
         </div>
         <p className="text-xs text-muted-foreground">
-          Alterar a role ou o status deste usuário invalida imediatamente as sessões ativas dele.
+          Alterar a função ou o status deste usuário invalida imediatamente as sessões ativas dele.
         </p>
         {errors.root && <p className="text-sm text-destructive">{errors.root.message}</p>}
         <DialogFooter>
@@ -459,6 +509,43 @@ function EditUserForm({ user, onSuccess }: { user: AdminUser; onSuccess: () => v
           </Button>
         </DialogFooter>
       </form>
+    </>
+  );
+}
+
+function DeactivateUserForm({ user, onSuccess }: { user: AdminUser; onSuccess: () => void }) {
+  const [error, setError] = useState<string | null>(null);
+
+  const mutation = useMutation({
+    mutationFn: () => apiClient.delete<AdminUser>(`admin/users/${user.id}`),
+    onSuccess,
+    onError: (err) => {
+      setError(err instanceof ApiError ? err.message : "Não foi possível desativar o usuário.");
+    },
+  });
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Desativar usuário</DialogTitle>
+      </DialogHeader>
+      <p className="text-sm text-muted-foreground">
+        Tem certeza que deseja desativar{" "}
+        <span className="font-medium text-foreground">{user.name}</span>? A conta perde acesso ao
+        sistema imediatamente e passa para a aba de desativados; o histórico de chamados,
+        comentários e anexos dele é mantido, e dá pra reativar a qualquer momento.
+      </p>
+      {error && <p className="text-sm text-destructive">{error}</p>}
+      <DialogFooter>
+        <DialogClose render={<Button variant="outline" />}>Cancelar</DialogClose>
+        <Button
+          variant="destructive"
+          disabled={mutation.isPending}
+          onClick={() => mutation.mutate()}
+        >
+          {mutation.isPending ? "Desativando..." : "Desativar"}
+        </Button>
+      </DialogFooter>
     </>
   );
 }

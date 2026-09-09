@@ -1,10 +1,11 @@
 "use client";
 
-import { LayoutDashboard, LogOut, Tags, Ticket, Users } from "lucide-react";
+import { KeyRound, LayoutDashboard, LogOut, Tags, Ticket, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { Logo } from "@/components/brand/logo";
+import { ChangePasswordDialog } from "@/components/change-password-dialog";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Sidebar,
@@ -116,6 +117,16 @@ export function AppSidebar() {
           <ThemeToggle className="ml-auto size-7 shrink-0" />
         </div>
         <SidebarMenu>
+          <SidebarMenuItem>
+            <ChangePasswordDialog
+              trigger={
+                <SidebarMenuButton tooltip="Trocar senha">
+                  <KeyRound />
+                  <span>Trocar senha</span>
+                </SidebarMenuButton>
+              }
+            />
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               disabled={loggingOut}

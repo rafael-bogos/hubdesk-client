@@ -2,10 +2,13 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { Paperclip } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { BackToTicketsLink } from "@/components/tickets/back-to-tickets-link";
+import { StagedFilePreview } from "@/components/tickets/staged-file-preview";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -19,14 +22,16 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError, apiClient } from "@/lib/api-client";
+import { useSession } from "@/lib/session-context";
+import { ACCEPTED_FILE_TYPES } from "@/lib/tickets/attachments";
+import { shortId } from "@/lib/tickets/format";
 import {
   PRIORITY_LABELS,
   TICKET_PRIORITIES,
   type CategorySummary,
   type Ticket,
+  type UserSummary,
 } from "@/lib/tickets/types";
-
-const NO_CATEGORY = "NONE";
 
 const createTicketSchema = z.object({
   title: z.string().min(3, "Título deve ter ao menos 3 caracteres"),
@@ -39,10 +44,28 @@ type CreateTicketValues = z.infer<typeof createTicketSchema>;
 
 export default function NewTicketPage() {
   const router = useRouter();
+  const session = useSession();
+  const isAgentOrAdmin = session.role === "AGENT" || session.role === "ADMIN";
+
+  const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
+  const [stagedFiles, setStagedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const categoriesQuery = useQuery({
     queryKey: ["categories"],
     queryFn: () => apiClient.get<CategorySummary[]>("categories"),
+  });
+  const hasCategories = (categoriesQuery.data?.length ?? 0) > 0;
+  const categoryPlaceholder = categoriesQuery.isLoading
+    ? "Carregando categorias..."
+    : hasCategories
+      ? "Selecione uma categoria"
+      : "Nenhuma categoria cadastrada";
+
+  const agentsQuery = useQuery({
+    queryKey: ["agents"],
+    queryFn: () => apiClient.get<UserSummary[]>("users/agents"),
+    enabled: isAgentOrAdmin,
   });
 
   const {
@@ -53,15 +76,48 @@ export default function NewTicketPage() {
     formState: { errors, isSubmitting },
   } = useForm<CreateTicketValues>({
     resolver: zodResolver(createTicketSchema),
-    defaultValues: { priority: "MEDIUM", categoryId: NO_CATEGORY },
+    defaultValues: { priority: "MEDIUM", categoryId: "" },
   });
 
+  const addFiles = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setStagedFiles((prev) => [...prev, ...Array.from(files)]);
+  };
+
+  const removeFileAt = (index: number) => {
+    setStagedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const mutation = useMutation({
-    mutationFn: ({ categoryId, ...values }: CreateTicketValues) =>
-      apiClient.post<Ticket>("tickets", {
+    mutationFn: async (values: CreateTicketValues) => {
+      const ticket = await apiClient.post<Ticket>("tickets", {
         ...values,
-        categoryId: categoryId === NO_CATEGORY ? undefined : categoryId,
-      }),
+        categoryId: values.categoryId || undefined,
+      });
+
+      // Responsáveis e anexos são passos secundários: o chamado já foi criado
+      // nesse ponto, então uma falha aqui não deve impedir a navegação — dá
+      // pra ajustar depois pela tela de detalhes.
+      if (isAgentOrAdmin && assigneeIds.length > 0) {
+        try {
+          await apiClient.patch(`tickets/${ticket.id}/assign`, { assigneeIds });
+        } catch {
+          // ignorado de propósito, ver comentário acima
+        }
+      }
+
+      for (const file of stagedFiles) {
+        try {
+          const formData = new FormData();
+          formData.append("file", file);
+          await apiClient.post(`tickets/${ticket.id}/attachments`, formData);
+        } catch {
+          // ignorado de propósito, ver comentário acima
+        }
+      }
+
+      return ticket;
+    },
     onSuccess: (ticket) => {
       router.push(`/tickets/${ticket.id}`);
     },
@@ -82,7 +138,13 @@ export default function NewTicketPage() {
         <CardContent>
           <form
             className="flex flex-col gap-4"
-            onSubmit={handleSubmit((values) => mutation.mutate(values))}
+            onSubmit={handleSubmit((values) => {
+              if (hasCategories && !values.categoryId) {
+                setError("categoryId", { message: "Categoria é obrigatória" });
+                return;
+              }
+              mutation.mutate(values);
+            })}
           >
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="title">Título</Label>
@@ -130,32 +192,101 @@ export default function NewTicketPage() {
                 name="categoryId"
                 control={control}
                 render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
+                  <Select
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled={!categoriesQuery.isLoading && !hasCategories}
+                  >
                     <SelectTrigger id="categoryId" className="w-full">
-                      <SelectValue placeholder="Sem categoria">
-                        {(value: string | null) => {
-                          if (!value || value === NO_CATEGORY) return "Sem categoria";
-                          return categoriesQuery.data?.find((c) => c.id === value)?.name ?? null;
-                        }}
+                      <SelectValue placeholder={categoryPlaceholder}>
+                        {(value: string | null) =>
+                          (value && categoriesQuery.data?.find((c) => c.id === value)?.name) ||
+                          categoryPlaceholder
+                        }
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={NO_CATEGORY}>Sem categoria</SelectItem>
-                      {categoriesQuery.data?.length === 0 ? (
-                        <div className="px-1.5 py-1 text-sm text-muted-foreground">
-                          Nenhuma categoria cadastrada.
-                        </div>
-                      ) : (
-                        (categoriesQuery.data ?? []).map((category) => (
-                          <SelectItem key={category.id} value={category.id}>
-                            {category.name}
-                          </SelectItem>
-                        ))
-                      )}
+                      {(categoriesQuery.data ?? []).map((category) => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 )}
               />
+              {errors.categoryId && (
+                <p className="text-sm text-destructive">{errors.categoryId.message}</p>
+              )}
+            </div>
+
+            {isAgentOrAdmin && (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="assignees-select">Responsáveis</Label>
+                <Select multiple value={assigneeIds} onValueChange={setAssigneeIds}>
+                  <SelectTrigger id="assignees-select" className="w-full">
+                    <SelectValue placeholder="Ninguém atribuído">
+                      {(value: string[]) =>
+                        value.length > 0
+                          ? value
+                              .map(
+                                (id) => agentsQuery.data?.find((agent) => agent.id === id)?.name ?? shortId(id),
+                              )
+                              .join(", ")
+                          : "Ninguém atribuído"
+                      }
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {agentsQuery.data?.length === 0 ? (
+                      <div className="px-1.5 py-1 text-sm text-muted-foreground">
+                        Nenhum agente disponível.
+                      </div>
+                    ) : (
+                      (agentsQuery.data ?? []).map((agent) => (
+                        <SelectItem key={agent.id} value={agent.id}>
+                          {agent.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-1.5">
+              <Label>Anexos</Label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept={ACCEPTED_FILE_TYPES}
+                className="hidden"
+                onChange={(e) => {
+                  addFiles(e.target.files);
+                  e.target.value = "";
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="w-fit"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Paperclip className="size-4" aria-hidden="true" />
+                Anexar arquivo
+              </Button>
+              {stagedFiles.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {stagedFiles.map((file, index) => (
+                    <StagedFilePreview
+                      key={`${file.name}-${file.lastModified}-${index}`}
+                      file={file}
+                      onRemove={() => removeFileAt(index)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
 
             {errors.root && <p className="text-sm text-destructive">{errors.root.message}</p>}

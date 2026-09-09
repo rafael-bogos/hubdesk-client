@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { Lock, Mail } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 
 const loginSchema = z.object({
   email: z.string().email("E-mail inválido"),
@@ -30,7 +31,6 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const router = useRouter();
   const [serverError, setServerError] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -101,35 +101,20 @@ export default function LoginPage() {
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="password">Senha</Label>
-                <div className="relative">
-                  <Lock
-                    aria-hidden="true"
-                    className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-muted-foreground"
-                  />
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    autoComplete="current-password"
-                    placeholder="••••••••"
-                    className="px-8"
-                    aria-invalid={errors.password ? true : undefined}
-                    aria-describedby={errors.password ? "password-error" : undefined}
-                    {...register("password")}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute inset-y-0 right-0 flex w-8 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
-                    aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
-                    aria-pressed={showPassword}
-                  >
-                    {showPassword ? (
-                      <EyeOff aria-hidden="true" className="size-3.5" />
-                    ) : (
-                      <Eye aria-hidden="true" className="size-3.5" />
-                    )}
-                  </button>
-                </div>
+                <PasswordInput
+                  id="password"
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  startIcon={
+                    <Lock
+                      aria-hidden="true"
+                      className="pointer-events-none absolute top-1/2 left-2.5 z-10 size-3.5 -translate-y-1/2 text-muted-foreground"
+                    />
+                  }
+                  aria-invalid={errors.password ? true : undefined}
+                  aria-describedby={errors.password ? "password-error" : undefined}
+                  {...register("password")}
+                />
                 {errors.password && (
                   <p id="password-error" className="text-sm text-destructive">
                     {errors.password.message}

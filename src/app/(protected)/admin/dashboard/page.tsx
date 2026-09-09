@@ -48,7 +48,7 @@ export default function AdminDashboardPage() {
           labels={PRIORITY_LABELS as Record<string, string>}
         />
         <BreakdownCard
-          title="Usuários por role"
+          title="Usuários por função"
           entries={Object.entries(stats.usersByRole)}
           labels={ROLE_LABELS as Record<string, string>}
         />

@@ -14,13 +14,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { UserAvatar } from "@/components/user-avatar";
 import { apiClient, ApiError } from "@/lib/api-client";
 import { useSession } from "@/lib/session-context";
+import { ACCEPTED_FILE_TYPES } from "@/lib/tickets/attachments";
 import { formatDateTime, shortId } from "@/lib/tickets/format";
 import type { Attachment, Comment, Ticket, UserSummary } from "@/lib/tickets/types";
-
-// Aceita os mesmos tipos que o backend permite (ver ALLOWED_MIME_TYPES em
-// ticket-routes.ts) — o `accept` só melhora a UX do seletor nativo, a
-// validação de verdade continua sendo feita no servidor.
-const ACCEPTED_FILE_TYPES = ".png,.jpg,.jpeg,.gif,.webp,.pdf,.txt,.zip,.mp4,.webm,.mov";
 
 type ConversationEntry =
   | { kind: "comment"; id: string; createdAt: string; comment: Comment; attachments: Attachment[] }
