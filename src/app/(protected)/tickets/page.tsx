@@ -214,7 +214,7 @@ export default function TicketsPage() {
                       {ticket.requester?.name ?? "—"}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {ticket.assignee?.name ?? "—"}
+                      {ticket.assignees?.length ? ticket.assignees.map((a) => a.name).join(", ") : "—"}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {formatDateTime(ticket.createdAt)}

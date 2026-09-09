@@ -44,7 +44,7 @@ export interface Ticket {
   status: TicketStatus;
   priority: TicketPriority;
   requesterId: string;
-  assigneeId: string | null;
+  assigneeIds: string[];
   categoryId: string | null;
   createdAt: string;
   updatedAt: string;
@@ -52,7 +52,7 @@ export interface Ticket {
   // Presentes em GET /tickets e GET /tickets/:id; ausentes nas respostas de
   // mutações (status/assign), que devolvem o ticket "cru" do repositório.
   requester?: UserSummary | null;
-  assignee?: UserSummary | null;
+  assignees?: UserSummary[];
   category?: CategorySummary | null;
 }
 

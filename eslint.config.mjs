@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Vendored third-party scripts installed by the impeccable Claude Code skill.
+    ".claude/**",
   ]),
 ]);
 
