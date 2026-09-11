@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { TicketNotifications } from "@/components/tickets/ticket-notifications";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { getSession } from "@/lib/session";
@@ -18,8 +19,9 @@ export default async function ProtectedLayout({ children }: { children: React.Re
       <SidebarProvider>
         <AppSidebar />
         <SidebarInset>
-          <div className="flex items-center border-b px-3 py-2">
+          <div className="flex items-center justify-between border-b px-3 py-2">
             <SidebarTrigger />
+            <NotificationBell />
           </div>
           <main className="min-h-0 flex-1 overflow-y-auto">{children}</main>
         </SidebarInset>

@@ -53,12 +53,18 @@ async function handle(request: NextRequest, context: RouteContext) {
     }
   }
 
-  const responseBody = await backendResponse.arrayBuffer();
+  const responseBuffer = await backendResponse.arrayBuffer();
   const responseHeaders = new Headers({
     "content-type": backendResponse.headers.get("content-type") ?? "application/json",
   });
   const contentDisposition = backendResponse.headers.get("content-disposition");
   if (contentDisposition) responseHeaders.set("content-disposition", contentDisposition);
+
+  // 204/205/304 (e 101) são "null body status": a Fetch API não deixa um
+  // Response com esse status ter corpo, nem um ArrayBuffer vazio — passar um
+  // buffer aqui derruba o construtor com TypeError antes mesmo de responder.
+  const isNullBodyStatus = [101, 204, 205, 304].includes(backendResponse.status);
+  const responseBody = isNullBodyStatus ? null : responseBuffer;
 
   const response = new NextResponse(responseBody, {
     status: backendResponse.status,

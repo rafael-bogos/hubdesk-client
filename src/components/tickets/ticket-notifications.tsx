@@ -1,20 +1,10 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { io, type Socket } from "socket.io-client";
-import { toast } from "sonner";
 import { useSession } from "@/lib/session-context";
-import { PRIORITY_LABELS, type TicketPriority } from "@/lib/tickets/types";
-
-interface TicketCreatedEvent {
-  id: string;
-  number: number;
-  title: string;
-  priority: TicketPriority;
-  requesterId: string;
-}
+import type { AppNotification } from "@/lib/notifications/types";
 
 async function fetchSocketToken(): Promise<string | null> {
   try {
@@ -29,19 +19,17 @@ async function fetchSocketToken(): Promise<string | null> {
   }
 }
 
-// Monta a conexão em tempo real com o backend (só pra agent/admin — a mesma
-// regra de quem entra na sala "agents" no servidor). Fica escutando
-// "ticket:created" a vida toda enquanto a pessoa estiver logada, em qualquer
+// Monta a conexão em tempo real com o backend pra qualquer papel — o servidor
+// decide quem recebe o quê por sala (ver socket-server.ts), aqui só reflete a
+// notificação que chegar na área de notificações (sino, ver notification-bell.tsx)
+// e atualiza a tela do chamado se estiver aberta. Sem toast de propósito.
+// Fica escutando a vida toda enquanto a pessoa estiver logada, em qualquer
 // tela — por isso vive no layout protegido, não numa página específica.
 export function TicketNotifications() {
   const session = useSession();
-  const router = useRouter();
   const queryClient = useQueryClient();
-  const isAgentOrAdmin = session.role === "AGENT" || session.role === "ADMIN";
 
   useEffect(() => {
-    if (!isAgentOrAdmin) return;
-
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_WS_URL;
     if (!backendUrl) {
       console.error("NEXT_PUBLIC_BACKEND_WS_URL não configurada — notificações em tempo real desativadas.");
@@ -57,23 +45,16 @@ export function TicketNotifications() {
       },
     });
 
-    socket.on("ticket:created", (event: TicketCreatedEvent) => {
-      console.log("ticket:created", event);
+    socket.on("notification:new", (notification: AppNotification) => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
       queryClient.invalidateQueries({ queryKey: ["tickets"] });
-
-      toast.info(`Novo chamado #${event.number}`, {
-        description: `${event.title} · Prioridade ${PRIORITY_LABELS[event.priority]}`,
-        action: {
-          label: "Ver chamado",
-          onClick: () => router.push(`/tickets/${event.number}`),
-        },
-      });
+      queryClient.invalidateQueries({ queryKey: ["ticket", String(notification.ticketNumber)] });
     });
 
     return () => {
       socket.disconnect();
     };
-  }, [isAgentOrAdmin, queryClient, router]);
+  }, [session.id, queryClient]);
 
   return null;
 }
