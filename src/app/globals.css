@@ -49,6 +49,9 @@
 }
 
 :root {
+  /* Diz ao navegador qual tema está ativo, pra ele desenhar scrollbar, campos
+     nativos etc. no tom certo em vez de cair no padrão do SO. */
+  color-scheme: light;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -84,6 +87,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -130,5 +134,47 @@
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]) {
     cursor: pointer;
+  }
+
+  /* Sem isso, cada navegador desenha a scrollbar com a largura e cor padrão
+     do SO (fina e cinza no Chrome/Edge, larga e diferente no Firefox) — aqui
+     fica igual nos dois. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--border);
+    border: 2px solid transparent;
+    background-clip: content-box;
+    border-radius: 9999px;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--muted-foreground);
+  }
+
+  /* Chrome/Edge pintam o campo autopreenchido (login, etc.) com um fundo
+     amarelo/azul próprio, ignorando nosso bg-transparent — força a manter a
+     cor do tema. Firefox não tem esse problema, então o efeito é só cosmético
+     ali (sem-op). */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-text-fill-color: var(--foreground);
+    box-shadow: 0 0 0px 1000px var(--background) inset;
+    transition: background-color 9999s ease-in-out 0s;
+  }
+
+  input,
+  textarea,
+  select {
+    appearance: none;
   }
 }
