@@ -99,6 +99,15 @@ export function TicketConversation({
   const listRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Só anima mensagens que chegam depois da conversa já estar aberta (envio
+  // próprio ou "ticket:message" em tempo real) — sem isso, toda a conversa
+  // animaria de novo a cada refetch (grupo mudou, toggle de nota interna etc).
+  // Capturado uma única vez (estado, não ref — só assim dá pra ler durante o
+  // render): quem já existia na primeira renderização nunca anima; quem
+  // aparece depois, sim — e só naquela vez, já que o nó do DOM (mesma `key`)
+  // não é recriado nos renders seguintes.
+  const [initialEntryIds] = useState<Set<string>>(() => new Set(timeline.map((entry) => entry.id)));
+
   // scrollTop = scrollHeight (em vez de scrollIntoView num sentinel) chega ao
   // fim de verdade, incluindo o padding inferior do container.
   useEffect(() => {
@@ -209,11 +218,22 @@ export function TicketConversation({
                 : previous.attachment.uploadedById
               : null;
             const isGrouped = previousAuthorId === authorId;
+            const isNew = !initialEntryIds.has(entry.id);
 
             return (
               <div
                 key={entry.id}
-                className={cn("flex gap-2", isOwn && "flex-row-reverse", !isGrouped && index > 0 && "mt-3")}
+                className={cn(
+                  "flex gap-2",
+                  isOwn && "flex-row-reverse",
+                  !isGrouped && index > 0 && "mt-3",
+                  // Desliza do lado onde a mensagem aparece (direita se é sua,
+                  // esquerda se é da outra pessoa) — sutil, só na chegada.
+                  isNew &&
+                    (isOwn
+                      ? "animate-in fade-in slide-in-from-right-2 duration-300 ease-out"
+                      : "animate-in fade-in slide-in-from-left-2 duration-300 ease-out"),
+                )}
               >
                 {isGrouped ? (
                   <div className="size-7 shrink-0" aria-hidden="true" />
