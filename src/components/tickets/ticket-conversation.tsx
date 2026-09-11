@@ -2,11 +2,10 @@
 
 import { useMutation } from "@tanstack/react-query";
 import { cn } from "cn";
-import { Loader2, Paperclip, SendHorizontal } from "lucide-react";
+import { Loader2, Lock, Paperclip, SendHorizontal, Unlock } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { AttachmentChip } from "@/components/tickets/attachment-chip";
 import { StagedFilePreview } from "@/components/tickets/staged-file-preview";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -122,12 +121,31 @@ export function TicketConversation({
   });
 
   const uploadAttachment = useMutation({
-    mutationFn: (input: { file: File; commentId?: string }) => {
+    mutationFn: (input: { file: File; commentId?: string; isInternal?: boolean }) => {
       const formData = new FormData();
       formData.append("file", input.file);
       if (input.commentId) formData.append("commentId", input.commentId);
+      // Sem comentário (arquivo "solto"), não há de onde herdar a visibilidade no
+      // backend — manda explícito. Com comentário, deixa o backend herdar dele.
+      if (input.isInternal !== undefined) formData.append("isInternal", String(input.isInternal));
       return apiClient.post<Attachment>(`tickets/${ticket.id}/attachments`, formData);
     },
+  });
+
+  const toggleCommentInternal = useMutation({
+    mutationFn: (input: { commentId: string; isInternal: boolean }) =>
+      apiClient.patch<Comment>(`tickets/${ticket.id}/comments/${input.commentId}/internal`, {
+        isInternal: input.isInternal,
+      }),
+    onSuccess: onChange,
+  });
+
+  const toggleAttachmentInternal = useMutation({
+    mutationFn: (input: { attachmentId: string; isInternal: boolean }) =>
+      apiClient.patch<Attachment>(`tickets/${ticket.id}/attachments/${input.attachmentId}/internal`, {
+        isInternal: input.isInternal,
+      }),
+    onSuccess: onChange,
   });
 
   const isSending = addComment.isPending || uploadAttachment.isPending;
@@ -151,7 +169,11 @@ export function TicketConversation({
         commentId = comment.id;
       }
       if (stagedFile) {
-        await uploadAttachment.mutateAsync({ file: stagedFile, commentId });
+        await uploadAttachment.mutateAsync({
+          file: stagedFile,
+          commentId,
+          isInternal: commentId ? undefined : isInternal,
+        });
       }
       setBody("");
       setIsInternal(false);
@@ -176,18 +198,17 @@ export function TicketConversation({
             const authorName = resolveAuthorName(authorId, ticket, agents);
             const isOwn = authorId === session.id;
             const createdAt = entry.kind === "comment" ? entry.comment.createdAt : entry.attachment.createdAt;
-            const isInternalNote = entry.kind === "comment" && entry.comment.isInternal;
 
-            // Agrupa mensagens consecutivas do mesmo autor (e mesmo tipo interno/público),
-            // igual ao WhatsApp: só a primeira da sequência mostra avatar e nome.
+            // Agrupa mensagens consecutivas do mesmo autor, igual ao WhatsApp: só a
+            // primeira da sequência mostra avatar e nome — mesmo que uma delas seja
+            // nota interna e outra pública (a cor do balão já diferencia isso).
             const previous = timeline[index - 1];
             const previousAuthorId = previous
               ? previous.kind === "comment"
                 ? previous.comment.authorId
                 : previous.attachment.uploadedById
               : null;
-            const previousIsInternalNote = previous ? previous.kind === "comment" && previous.comment.isInternal : false;
-            const isGrouped = previousAuthorId === authorId && previousIsInternalNote === isInternalNote;
+            const isGrouped = previousAuthorId === authorId;
 
             return (
               <div
@@ -201,10 +222,7 @@ export function TicketConversation({
                 )}
                 <div className={cn("flex min-w-0 max-w-[80%] flex-col gap-1", isOwn && "items-end")}>
                   {!isGrouped && (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="font-medium text-foreground">{authorName}</span>
-                      {isInternalNote && <Badge variant="secondary">Nota interna</Badge>}
-                    </div>
+                    <span className="text-xs font-medium text-foreground">{authorName}</span>
                   )}
 
                   {entry.kind === "comment" && entry.comment.body && (
@@ -238,17 +256,58 @@ export function TicketConversation({
                   {entry.kind === "comment" && entry.attachments.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {entry.attachments.map((attachment) => (
-                        <AttachmentChip key={attachment.id} ticketId={ticket.id} attachment={attachment} />
+                        <AttachmentChip
+                          key={attachment.id}
+                          ticketId={ticket.id}
+                          attachment={attachment}
+                          canToggleInternal={isAgentOrAdmin && attachment.uploadedById === session.id}
+                          isToggling={toggleAttachmentInternal.isPending}
+                          isOwn={isOwn}
+                          onToggleInternal={(nextIsInternal) =>
+                            toggleAttachmentInternal.mutate({ attachmentId: attachment.id, isInternal: nextIsInternal })
+                          }
+                        />
                       ))}
                     </div>
                   )}
 
                   {entry.kind === "attachment" && (
-                    <AttachmentChip ticketId={ticket.id} attachment={entry.attachment} />
+                    <AttachmentChip
+                      ticketId={ticket.id}
+                      attachment={entry.attachment}
+                      canToggleInternal={isAgentOrAdmin && entry.attachment.uploadedById === session.id}
+                      isToggling={toggleAttachmentInternal.isPending}
+                      isOwn={isOwn}
+                      onToggleInternal={(nextIsInternal) =>
+                        toggleAttachmentInternal.mutate({ attachmentId: entry.attachment.id, isInternal: nextIsInternal })
+                      }
+                    />
                   )}
 
-                  {!(entry.kind === "comment" && entry.comment.body) && (
-                    <span className="px-1 text-[11px] text-muted-foreground">{formatDateTime(createdAt)}</span>
+                  {isAgentOrAdmin && entry.kind === "comment" && isOwn && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        toggleCommentInternal.mutate({
+                          commentId: entry.comment.id,
+                          isInternal: !entry.comment.isInternal,
+                        })
+                      }
+                      disabled={toggleCommentInternal.isPending}
+                      className="flex items-center gap-1 px-1 text-[11px] text-muted-foreground hover:text-foreground hover:underline disabled:opacity-50"
+                    >
+                      {entry.comment.isInternal ? (
+                        <>
+                          <Unlock className="size-3" aria-hidden="true" />
+                          Tornar pública
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="size-3" aria-hidden="true" />
+                          Marcar como interna
+                        </>
+                      )}
+                    </button>
                   )}
                 </div>
               </div>

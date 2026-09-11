@@ -1,10 +1,11 @@
 "use client";
 
-import { Download, FileIcon } from "lucide-react";
+import { cn } from "cn";
+import { Download, FileIcon, Lock, Unlock } from "lucide-react";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { attachmentDownloadUrl, isImageMimeType, isVideoMimeType } from "@/lib/tickets/attachments";
-import { formatBytes } from "@/lib/tickets/format";
+import { formatBytes, formatDateTime } from "@/lib/tickets/format";
 import type { Attachment } from "@/lib/tickets/types";
 
 // Anexo já enviado: preview inline para imagens/vídeos (clicável, expande num
@@ -15,22 +16,75 @@ import type { Attachment } from "@/lib/tickets/types";
 export function AttachmentChip({
   ticketId,
   attachment,
+  canToggleInternal,
+  onToggleInternal,
+  isToggling,
+  isOwn,
 }: {
   ticketId: string;
   attachment: Attachment;
+  canToggleInternal?: boolean;
+  onToggleInternal?: (nextIsInternal: boolean) => void;
+  isToggling?: boolean;
+  isOwn?: boolean;
 }) {
   const href = attachmentDownloadUrl(ticketId, attachment.id);
   const isImage = isImageMimeType(attachment.mimeType);
   const isVideo = isVideoMimeType(attachment.mimeType);
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // Mesmo esquema de cor da bolha de texto, pra anexo e mensagem parecerem a
+  // mesma "espécie" de elemento na conversa.
+  const bubbleClasses = attachment.isInternal
+    ? "bg-amber-100 text-amber-950 dark:bg-amber-950 dark:text-amber-200"
+    : isOwn
+      ? "bg-primary text-primary-foreground"
+      : "bg-muted";
+
+  const timestampClasses = cn(
+    "text-[10px] leading-none select-none",
+    isOwn && "text-right",
+    attachment.isInternal
+      ? "text-amber-950/60 dark:text-amber-200/60"
+      : isOwn
+        ? "text-primary-foreground/70"
+        : "text-muted-foreground",
+  );
+
+  const toggleButton = canToggleInternal && onToggleInternal && (
+    <button
+      type="button"
+      onClick={() => onToggleInternal(!attachment.isInternal)}
+      disabled={isToggling}
+      className={cn(
+        "flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground hover:underline disabled:opacity-50",
+        isOwn && "self-end",
+      )}
+    >
+      {attachment.isInternal ? (
+        <>
+          <Unlock className="size-3" aria-hidden="true" />
+          Tornar público
+        </>
+      ) : (
+        <>
+          <Lock className="size-3" aria-hidden="true" />
+          Marcar como interno
+        </>
+      )}
+    </button>
+  );
+
   if (isImage || isVideo) {
     return (
-      <>
+      <div className="flex flex-col gap-1">
         <button
           type="button"
           onClick={() => setIsExpanded(true)}
-          className="block w-fit max-w-[240px] overflow-hidden rounded-lg border bg-muted/30 text-left transition-opacity hover:opacity-90"
+          className={cn(
+            "flex max-w-[240px] flex-col overflow-hidden rounded-md text-left transition-opacity hover:opacity-90",
+            bubbleClasses,
+          )}
         >
           {/* h-40 fixo (em vez de max-h) reserva o espaço antes da mídia carregar,
               evitando que o layout do chat pule quando o tamanho real chega. */}
@@ -45,11 +99,15 @@ export function AttachmentChip({
           ) : (
             <video src={href} muted playsInline className="h-40 w-full object-cover" />
           )}
-          <span className="flex items-center justify-between gap-2 px-2 py-1 text-xs text-muted-foreground">
-            <span className="truncate">{attachment.filename}</span>
-            <span className="shrink-0">{formatBytes(attachment.size)}</span>
+          <span className="flex flex-col gap-1 px-3 py-2 text-sm">
+            <span className="flex items-center justify-between gap-2">
+              <span className="min-w-0 truncate font-medium">{attachment.filename}</span>
+              <span className="shrink-0 text-xs opacity-70">{formatBytes(attachment.size)}</span>
+            </span>
+            <span className={timestampClasses}>{formatDateTime(attachment.createdAt)}</span>
           </span>
         </button>
+        {toggleButton}
 
         <Dialog open={isExpanded} onOpenChange={setIsExpanded}>
           <DialogContent className="flex max-w-[calc(100%-2rem)] flex-col gap-3 sm:max-w-3xl">
@@ -78,19 +136,28 @@ export function AttachmentChip({
             </div>
           </DialogContent>
         </Dialog>
-      </>
+      </div>
     );
   }
 
   return (
-    <a
-      href={href}
-      className="flex w-fit max-w-[240px] items-center gap-2 rounded-lg border bg-muted/30 px-2.5 py-2 text-xs hover:bg-muted"
-    >
-      <FileIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-      <span className="min-w-0 flex-1 truncate font-medium">{attachment.filename}</span>
-      <span className="shrink-0 text-muted-foreground">{formatBytes(attachment.size)}</span>
-      <Download className="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-    </a>
+    <div className="flex flex-col gap-1">
+      <a
+        href={href}
+        className={cn(
+          "flex max-w-[280px] flex-col gap-1 rounded-md px-3 py-2 text-sm transition-opacity hover:opacity-90",
+          bubbleClasses,
+        )}
+      >
+        <span className="flex items-center gap-2">
+          <FileIcon className="size-4 shrink-0" aria-hidden="true" />
+          <span className="min-w-0 flex-1 truncate font-medium">{attachment.filename}</span>
+          <span className="shrink-0 text-xs opacity-70">{formatBytes(attachment.size)}</span>
+          <Download className="size-3.5 shrink-0" aria-hidden="true" />
+        </span>
+        <span className={timestampClasses}>{formatDateTime(attachment.createdAt)}</span>
+      </a>
+      {toggleButton}
+    </div>
   );
 }
