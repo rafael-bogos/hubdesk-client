@@ -51,6 +51,12 @@ export function TicketNotifications() {
       queryClient.invalidateQueries({ queryKey: ["ticket", String(notification.ticketNumber)] });
     });
 
+    // Mensagem nova (comentário/anexo) não gera notificação persistida — só
+    // atualiza a conversa na hora se a pessoa estiver com aquele chamado aberto.
+    socket.on("ticket:message", (payload: { ticketNumber: number }) => {
+      queryClient.invalidateQueries({ queryKey: ["ticket", String(payload.ticketNumber)] });
+    });
+
     return () => {
       socket.disconnect();
     };
