@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { AppSidebar } from "@/components/app-sidebar";
+import { TicketNotifications } from "@/components/tickets/ticket-notifications";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { getSession } from "@/lib/session";
 import { SessionProvider } from "@/lib/session-context";
@@ -13,6 +14,7 @@ export default async function ProtectedLayout({ children }: { children: React.Re
 
   return (
     <SessionProvider user={session}>
+      <TicketNotifications />
       <SidebarProvider>
         <AppSidebar />
         <SidebarInset>
