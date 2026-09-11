@@ -2,7 +2,8 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cn } from "cn";
-import { Check, Copy, PanelRightOpen, X } from "lucide-react";
+import { Check, Copy, PanelRightOpen, SearchX, X } from "lucide-react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { BackToTicketsLink } from "@/components/tickets/back-to-tickets-link";
@@ -71,11 +72,30 @@ export default function TicketDetailPage() {
 
   if (query.isError || !query.data) {
     return (
-      <div className="mx-auto max-w-3xl px-6 py-8">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 px-6 py-6 lg:py-8">
         <BackToTicketsLink />
-        <p role="alert" className="text-sm text-destructive">
-          Chamado não encontrado ou você não tem acesso a ele.
-        </p>
+        <div
+          role="alert"
+          className="flex flex-col items-center justify-center gap-3 rounded-xl px-4 py-20 text-center ring-1 ring-foreground/10"
+        >
+          <div className="flex size-14 items-center justify-center rounded-full bg-muted">
+            <SearchX className="size-7 text-muted-foreground" aria-hidden="true" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <p className="font-heading text-base font-medium">Chamado não encontrado</p>
+            <p className="max-w-sm text-sm text-muted-foreground">
+              O número #{id} não existe ou você não tem acesso a ele. Confira se o link está
+              correto.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-1"
+            nativeButton={false}
+            render={<Link href="/tickets">Ver todos os chamados</Link>}
+          />
+        </div>
       </div>
     );
   }
@@ -165,13 +185,13 @@ function TicketDetailsPanel({
 
   const updateStatus = useMutation({
     mutationFn: (status: TicketStatus) =>
-      apiClient.patch<Ticket>(`tickets/${ticket.id}/status`, { status }),
+      apiClient.patch<Ticket>(`tickets/${ticket.number}/status`, { status }),
     onSuccess: onChange,
   });
 
   const assign = useMutation({
     mutationFn: (assigneeIds: string[]) =>
-      apiClient.patch<Ticket>(`tickets/${ticket.id}/assign`, { assigneeIds }),
+      apiClient.patch<Ticket>(`tickets/${ticket.number}/assign`, { assigneeIds }),
     onSuccess: onChange,
   });
 

@@ -200,7 +200,7 @@ export default function TicketsPage() {
                   return (
                     <Link
                       key={ticket.id}
-                      href={`/tickets/${ticket.id}`}
+                      href={`/tickets/${ticket.number}`}
                       className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-muted/50"
                     >
                       <StatusDot status={ticket.status} className="mt-1.5 shrink-0" />

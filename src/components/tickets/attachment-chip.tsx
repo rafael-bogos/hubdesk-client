@@ -21,7 +21,7 @@ export function AttachmentChip({
   isToggling,
   isOwn,
 }: {
-  ticketId: string;
+  ticketId: string | number;
   attachment: Attachment;
   canToggleInternal?: boolean;
   onToggleInternal?: (nextIsInternal: boolean) => void;

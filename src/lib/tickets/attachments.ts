@@ -13,6 +13,6 @@ export function isVideoMimeType(mimeType: string): boolean {
   return mimeType.startsWith("video/");
 }
 
-export function attachmentDownloadUrl(ticketId: string, attachmentId: string): string {
+export function attachmentDownloadUrl(ticketId: string | number, attachmentId: string): string {
   return `/api/backend/tickets/${ticketId}/attachments/${attachmentId}`;
 }

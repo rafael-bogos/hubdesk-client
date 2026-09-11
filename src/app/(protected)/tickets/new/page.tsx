@@ -100,7 +100,7 @@ export default function NewTicketPage() {
       // pra ajustar depois pela tela de detalhes.
       if (isAgentOrAdmin && assigneeIds.length > 0) {
         try {
-          await apiClient.patch(`tickets/${ticket.id}/assign`, { assigneeIds });
+          await apiClient.patch(`tickets/${ticket.number}/assign`, { assigneeIds });
         } catch {
           // ignorado de propósito, ver comentário acima
         }
@@ -110,7 +110,7 @@ export default function NewTicketPage() {
         try {
           const formData = new FormData();
           formData.append("file", file);
-          await apiClient.post(`tickets/${ticket.id}/attachments`, formData);
+          await apiClient.post(`tickets/${ticket.number}/attachments`, formData);
         } catch {
           // ignorado de propósito, ver comentário acima
         }
@@ -119,7 +119,7 @@ export default function NewTicketPage() {
       return ticket;
     },
     onSuccess: (ticket) => {
-      router.push(`/tickets/${ticket.id}`);
+      router.push(`/tickets/${ticket.number}`);
     },
     onError: (error) => {
       setError("root", {

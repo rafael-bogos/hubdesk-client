@@ -117,7 +117,7 @@ export function TicketConversation({
 
   const addComment = useMutation({
     mutationFn: (input: { body: string; isInternal: boolean }) =>
-      apiClient.post<Comment>(`tickets/${ticket.id}/comments`, input),
+      apiClient.post<Comment>(`tickets/${ticket.number}/comments`, input),
   });
 
   const uploadAttachment = useMutation({
@@ -128,13 +128,13 @@ export function TicketConversation({
       // Sem comentário (arquivo "solto"), não há de onde herdar a visibilidade no
       // backend — manda explícito. Com comentário, deixa o backend herdar dele.
       if (input.isInternal !== undefined) formData.append("isInternal", String(input.isInternal));
-      return apiClient.post<Attachment>(`tickets/${ticket.id}/attachments`, formData);
+      return apiClient.post<Attachment>(`tickets/${ticket.number}/attachments`, formData);
     },
   });
 
   const toggleCommentInternal = useMutation({
     mutationFn: (input: { commentId: string; isInternal: boolean }) =>
-      apiClient.patch<Comment>(`tickets/${ticket.id}/comments/${input.commentId}/internal`, {
+      apiClient.patch<Comment>(`tickets/${ticket.number}/comments/${input.commentId}/internal`, {
         isInternal: input.isInternal,
       }),
     onSuccess: onChange,
@@ -142,7 +142,7 @@ export function TicketConversation({
 
   const toggleAttachmentInternal = useMutation({
     mutationFn: (input: { attachmentId: string; isInternal: boolean }) =>
-      apiClient.patch<Attachment>(`tickets/${ticket.id}/attachments/${input.attachmentId}/internal`, {
+      apiClient.patch<Attachment>(`tickets/${ticket.number}/attachments/${input.attachmentId}/internal`, {
         isInternal: input.isInternal,
       }),
     onSuccess: onChange,
@@ -258,7 +258,7 @@ export function TicketConversation({
                       {entry.attachments.map((attachment) => (
                         <AttachmentChip
                           key={attachment.id}
-                          ticketId={ticket.id}
+                          ticketId={ticket.number}
                           attachment={attachment}
                           canToggleInternal={isAgentOrAdmin && attachment.uploadedById === session.id}
                           isToggling={toggleAttachmentInternal.isPending}
@@ -273,7 +273,7 @@ export function TicketConversation({
 
                   {entry.kind === "attachment" && (
                     <AttachmentChip
-                      ticketId={ticket.id}
+                      ticketId={ticket.number}
                       attachment={entry.attachment}
                       canToggleInternal={isAgentOrAdmin && entry.attachment.uploadedById === session.id}
                       isToggling={toggleAttachmentInternal.isPending}
