@@ -39,6 +39,7 @@ export interface CategorySummary {
 
 export interface Ticket {
   id: string;
+  number: number;
   title: string;
   description: string;
   status: TicketStatus;

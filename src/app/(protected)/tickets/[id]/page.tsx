@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cn } from "cn";
-import { PanelRightOpen, X } from "lucide-react";
+import { Check, Copy, PanelRightOpen, X } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { BackToTicketsLink } from "@/components/tickets/back-to-tickets-link";
@@ -40,6 +40,17 @@ export default function TicketDetailPage() {
   const queryClient = useQueryClient();
   const isAgentOrAdmin = session.role === "AGENT" || session.role === "ADMIN";
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+
+  const copyTicketNumber = async (ticketNumber: number) => {
+    try {
+      await navigator.clipboard.writeText(String(ticketNumber));
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 1500);
+    } catch {
+      // clipboard indisponível (ex: contexto não seguro); sem feedback de erro por ora.
+    }
+  };
 
   const query = useQuery({
     queryKey: ["ticket", id],
@@ -75,7 +86,23 @@ export default function TicketDetailPage() {
     <div className="flex h-full min-h-0">
       <div className="mx-auto flex min-h-0 w-full min-w-0 max-w-4xl flex-1 flex-col gap-4 px-6 py-6 lg:py-8">
         <div className="flex shrink-0 items-start justify-between gap-4">
-          <BackToTicketsLink />
+          <div className="flex items-center gap-3">
+            <BackToTicketsLink />
+            <button
+              type="button"
+              onClick={() => copyTicketNumber(ticket.number)}
+              className="mb-4 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
+              title="Copiar número do chamado"
+            >
+              #{ticket.number}
+              {isCopied ? (
+                <Check className="size-3.5" aria-hidden="true" />
+              ) : (
+                <Copy className="size-3.5" aria-hidden="true" />
+              )}
+              <span className="sr-only">Copiar número do chamado</span>
+            </button>
+          </div>
           <Button
             type="button"
             variant="outline"
@@ -151,6 +178,7 @@ function TicketDetailsPanel({
   return (
     <div className="flex flex-col gap-5 p-5">
       <div className="flex flex-col gap-2">
+        <span className="text-xs text-muted-foreground">Chamado #{ticket.number}</span>
         <h2 className="font-heading text-base leading-snug font-medium">{ticket.title}</h2>
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={ticket.status} />

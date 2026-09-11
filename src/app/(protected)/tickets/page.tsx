@@ -206,7 +206,10 @@ export default function TicketsPage() {
                       <StatusDot status={ticket.status} className="mt-1.5 shrink-0" />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-3">
-                          <span className="truncate font-medium">{ticket.title}</span>
+                          <span className="min-w-0 truncate">
+                            <span className="text-muted-foreground">#{ticket.number}</span>{" "}
+                            <span className="font-medium">{ticket.title}</span>
+                          </span>
                           <PriorityBadge priority={ticket.priority} />
                         </div>
                         <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
