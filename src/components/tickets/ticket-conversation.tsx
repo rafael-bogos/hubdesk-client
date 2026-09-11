@@ -165,33 +165,52 @@ export function TicketConversation({
   return (
     <Card className="flex min-h-0 flex-1 flex-col gap-0 overflow-hidden p-0">
       <CardContent className="flex h-full min-h-0 flex-col gap-0 p-0">
-        <div ref={listRef} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+        <div ref={listRef} className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-4">
           {timeline.length === 0 && (
             <p className="m-auto text-sm text-muted-foreground">
               Nenhuma mensagem ainda. Escreva a primeira abaixo.
             </p>
           )}
-          {timeline.map((entry) => {
+          {timeline.map((entry, index) => {
             const authorId = entry.kind === "comment" ? entry.comment.authorId : entry.attachment.uploadedById;
             const authorName = resolveAuthorName(authorId, ticket, agents);
             const isOwn = authorId === session.id;
             const createdAt = entry.kind === "comment" ? entry.comment.createdAt : entry.attachment.createdAt;
             const isInternalNote = entry.kind === "comment" && entry.comment.isInternal;
 
+            // Agrupa mensagens consecutivas do mesmo autor (e mesmo tipo interno/público),
+            // igual ao WhatsApp: só a primeira da sequência mostra avatar e nome.
+            const previous = timeline[index - 1];
+            const previousAuthorId = previous
+              ? previous.kind === "comment"
+                ? previous.comment.authorId
+                : previous.attachment.uploadedById
+              : null;
+            const previousIsInternalNote = previous ? previous.kind === "comment" && previous.comment.isInternal : false;
+            const isGrouped = previousAuthorId === authorId && previousIsInternalNote === isInternalNote;
+
             return (
-              <div key={entry.id} className={cn("flex gap-2", isOwn && "flex-row-reverse")}>
-                <UserAvatar name={authorName} className="mt-0.5 size-7 shrink-0" />
+              <div
+                key={entry.id}
+                className={cn("flex gap-2", isOwn && "flex-row-reverse", !isGrouped && index > 0 && "mt-3")}
+              >
+                {isGrouped ? (
+                  <div className="size-7 shrink-0" aria-hidden="true" />
+                ) : (
+                  <UserAvatar name={authorName} className="mt-0.5 size-7 shrink-0" />
+                )}
                 <div className={cn("flex min-w-0 max-w-[80%] flex-col gap-1", isOwn && "items-end")}>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground">{authorName}</span>
-                    <span>{formatDateTime(createdAt)}</span>
-                    {isInternalNote && <Badge variant="secondary">Nota interna</Badge>}
-                  </div>
+                  {!isGrouped && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground">{authorName}</span>
+                      {isInternalNote && <Badge variant="secondary">Nota interna</Badge>}
+                    </div>
+                  )}
 
                   {entry.kind === "comment" && entry.comment.body && (
                     <div
                       className={cn(
-                        "max-w-full whitespace-pre-wrap break-words rounded-2xl px-3 py-2 text-sm",
+                        "max-w-full rounded-md px-3 py-2 text-sm",
                         entry.comment.isInternal
                           ? "bg-amber-100 text-amber-950 dark:bg-amber-950 dark:text-amber-200"
                           : isOwn
@@ -199,7 +218,20 @@ export function TicketConversation({
                             : "bg-muted",
                       )}
                     >
-                      {entry.comment.body}
+                      <p className="whitespace-pre-wrap break-words">{entry.comment.body}</p>
+                      <p
+                        className={cn(
+                          "mt-1 text-[10px] leading-none select-none",
+                          isOwn && "text-right",
+                          entry.comment.isInternal
+                            ? "text-amber-950/60 dark:text-amber-200/60"
+                            : isOwn
+                              ? "text-primary-foreground/70"
+                              : "text-muted-foreground",
+                        )}
+                      >
+                        {formatDateTime(createdAt)}
+                      </p>
                     </div>
                   )}
 
@@ -213,6 +245,10 @@ export function TicketConversation({
 
                   {entry.kind === "attachment" && (
                     <AttachmentChip ticketId={ticket.id} attachment={entry.attachment} />
+                  )}
+
+                  {!(entry.kind === "comment" && entry.comment.body) && (
+                    <span className="px-1 text-[11px] text-muted-foreground">{formatDateTime(createdAt)}</span>
                   )}
                 </div>
               </div>
