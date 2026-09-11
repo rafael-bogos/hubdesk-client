@@ -7,16 +7,18 @@ import {
   ChevronRight,
   Inbox,
   RotateCw,
+  Search,
   SlidersHorizontal,
   X,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PriorityBadge } from "@/components/tickets/priority-badge";
 import { StatusDot } from "@/components/tickets/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -45,7 +47,7 @@ import {
 const PAGE_SIZE = 20;
 const ALL = "ALL";
 
-type FilterKey = "status" | "priority" | "categoryId" | "assigneeId";
+type FilterKey = "status" | "priority" | "categoryId" | "assigneeId" | "search";
 
 export default function TicketsPage() {
   const router = useRouter();
@@ -58,9 +60,33 @@ export default function TicketsPage() {
   const priority = searchParams.get("priority") ?? ALL;
   const categoryId = searchParams.get("categoryId") ?? ALL;
   const assigneeId = searchParams.get("assigneeId") ?? ALL;
+  const search = searchParams.get("search") ?? "";
   const page = Number(searchParams.get("page") ?? "1");
   const hasActiveFilters =
-    status !== ALL || priority !== ALL || categoryId !== ALL || assigneeId !== ALL;
+    status !== ALL || priority !== ALL || categoryId !== ALL || assigneeId !== ALL || search !== "";
+
+  // Campo de busca fica com estado próprio e só reflete na URL (e dispara a
+  // busca) depois de parar de digitar — senão cada tecla vira uma navegação.
+  const [searchInput, setSearchInput] = useState(search);
+  // Quando a URL muda por fora (ex: botão "Limpar"), reflete no campo — ajuste
+  // feito durante o render (padrão recomendado pelo React), não num effect.
+  const [syncedSearch, setSyncedSearch] = useState(search);
+  if (search !== syncedSearch) {
+    setSyncedSearch(search);
+    setSearchInput(search);
+  }
+
+  useEffect(() => {
+    const trimmed = searchInput.trim();
+    if (trimmed === search) return;
+
+    const timeout = setTimeout(() => {
+      updateFilter("search", trimmed || null);
+    }, 400);
+
+    return () => clearTimeout(timeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só deve rodar quando o texto digitado muda
+  }, [searchInput]);
 
   const categoriesQuery = useQuery({
     queryKey: ["categories"],
@@ -74,13 +100,14 @@ export default function TicketsPage() {
   });
 
   const query = useQuery({
-    queryKey: ["tickets", { status, priority, categoryId, assigneeId, page }],
+    queryKey: ["tickets", { status, priority, categoryId, assigneeId, search, page }],
     queryFn: () => {
       const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
       if (status !== ALL) params.set("status", status);
       if (priority !== ALL) params.set("priority", priority);
       if (categoryId !== ALL) params.set("categoryId", categoryId);
       if (assigneeId !== ALL) params.set("assigneeId", assigneeId);
+      if (search) params.set("search", search);
       return apiClient.get<ListTicketsResult>(`tickets?${params.toString()}`);
     },
   });
@@ -107,8 +134,8 @@ export default function TicketsPage() {
   const totalPages = query.data ? Math.max(1, Math.ceil(query.data.total / PAGE_SIZE)) : 1;
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="mx-auto flex h-full min-h-0 max-w-6xl flex-col px-6 py-8">
+      <div className="mb-6 flex shrink-0 items-center justify-between">
         <div className="flex items-center gap-2.5">
           <h1 className="text-xl font-semibold">Chamados</h1>
           {query.data && (
@@ -136,10 +163,25 @@ export default function TicketsPage() {
         </div>
       </div>
 
-      <div className="flex items-start gap-6">
-        <div className="min-w-0 flex-1">
+      <div className="flex min-h-0 flex-1 items-stretch gap-6">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <div className="relative mb-4 shrink-0">
+            <Search
+              className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <Input
+              type="text"
+              placeholder="Buscar por título ou número (#1234)..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="h-9 pl-8"
+              aria-label="Buscar chamados"
+            />
+          </div>
+
           {query.isLoading && (
-            <div className="divide-y rounded-md border bg-background">
+            <div className="min-h-0 flex-1 divide-y overflow-y-auto rounded-md border bg-background">
               {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} className="flex items-start gap-3 px-4 py-3">
                   <Skeleton className="mt-1.5 size-2 shrink-0 rounded-full" />
@@ -156,7 +198,7 @@ export default function TicketsPage() {
           )}
 
           {query.isError && (
-            <div className="flex flex-col items-center justify-center gap-3 rounded-md border bg-background py-16 text-center">
+            <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 rounded-md border bg-background py-16 text-center">
               <p className="text-sm text-destructive">Não foi possível carregar os chamados.</p>
               <Button variant="outline" size="sm" onClick={() => query.refetch()}>
                 <RotateCw className="size-3.5" aria-hidden="true" />
@@ -167,7 +209,7 @@ export default function TicketsPage() {
 
           {query.data && (
             <>
-              <div className="divide-y rounded-md border bg-background">
+              <div className="min-h-0 flex-1 divide-y overflow-y-auto rounded-md border bg-background">
                 {query.data.items.length === 0 && (
                   <div className="flex flex-col items-center justify-center gap-3 px-4 py-16 text-center text-muted-foreground">
                     <Inbox className="size-9" aria-hidden="true" />
@@ -227,7 +269,7 @@ export default function TicketsPage() {
                 })}
               </div>
 
-              <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
+              <div className="mt-4 flex shrink-0 items-center justify-between text-sm text-muted-foreground">
                 <span>
                   Página {query.data.page} de {totalPages} · {query.data.total} chamado(s)
                 </span>
@@ -256,7 +298,7 @@ export default function TicketsPage() {
           )}
         </div>
 
-        <aside className="hidden w-64 shrink-0 lg:sticky lg:top-8 lg:block">
+        <aside className="hidden w-64 shrink-0 overflow-y-auto lg:block">
           <TicketFilters
             status={status}
             priority={priority}
