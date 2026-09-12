@@ -1,12 +1,13 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cn } from "cn";
 import {
   ArrowRight,
   ChevronLeft,
   ChevronRight,
   Inbox,
+  Loader2,
   RotateCw,
   Search,
   SlidersHorizontal,
@@ -19,6 +20,7 @@ import { PriorityBadge } from "@/components/tickets/priority-badge";
 import { StatusDot } from "@/components/tickets/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -38,8 +40,10 @@ import {
   PRIORITY_LABELS,
   STATUS_LABELS,
   TICKET_PRIORITIES,
+  TICKET_STATUSES,
   type CategorySummary,
   type ListTicketsResult,
+  type Ticket,
   type TicketPriority,
   type TicketStatus,
   type UserSummary,
@@ -47,16 +51,31 @@ import {
 
 const PAGE_SIZE = 20;
 const ALL = "ALL";
+const UNASSIGNED = "UNASSIGNED";
 
 type TicketView = "active" | "resolved";
 
 type FilterKey = "status" | "priority" | "categoryId" | "assigneeId" | "search";
 
+interface BulkUpdatePayload {
+  ticketNumbers: number[];
+  status?: TicketStatus;
+  priority?: TicketPriority;
+  assigneeIds?: string[];
+}
+
+interface BulkUpdateResult {
+  updated: Ticket[];
+  failed: { ticketNumber: number; reason: string }[];
+}
+
 export default function TicketsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const session = useSession();
   const isAdmin = session.role === "ADMIN";
+  const isAgentOrAdmin = session.role === "AGENT" || session.role === "ADMIN";
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
   const view: TicketView = searchParams.get("view") === "resolved" ? "resolved" : "active";
@@ -100,7 +119,7 @@ export default function TicketsPage() {
   const agentsQuery = useQuery({
     queryKey: ["agents"],
     queryFn: () => apiClient.get<UserSummary[]>("users/agents"),
-    enabled: isAdmin,
+    enabled: isAgentOrAdmin,
   });
 
   const query = useQuery({
@@ -119,6 +138,74 @@ export default function TicketsPage() {
       return apiClient.get<ListTicketsResult>(`tickets?${params.toString()}`);
     },
   });
+
+  // Seleção pra edição em lote: guarda o ticket inteiro (não só o id) porque
+  // o endpoint de bulk precisa do `number`, e o item pode não estar mais em
+  // `query.data` depois de mudar de página/filtro.
+  const [selected, setSelected] = useState<Map<string, Ticket>>(new Map());
+  const selectionScopeKey = JSON.stringify({ view, status, priority, categoryId, assigneeId, search, page });
+  const [syncedSelectionScopeKey, setSyncedSelectionScopeKey] = useState(selectionScopeKey);
+  if (selectionScopeKey !== syncedSelectionScopeKey) {
+    setSyncedSelectionScopeKey(selectionScopeKey);
+    setSelected(new Map());
+  }
+
+  const [bulkStatus, setBulkStatus] = useState(ALL);
+  const [bulkPriority, setBulkPriority] = useState(ALL);
+  const [bulkAssigneeId, setBulkAssigneeId] = useState(ALL);
+  const [bulkFeedback, setBulkFeedback] = useState<string | null>(null);
+
+  const bulkUpdateMutation = useMutation({
+    mutationFn: (payload: BulkUpdatePayload) => apiClient.patch<BulkUpdateResult>("tickets/bulk", payload),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["tickets"] });
+      setSelected(new Map());
+      setBulkStatus(ALL);
+      setBulkPriority(ALL);
+      setBulkAssigneeId(ALL);
+      setBulkFeedback(
+        result.failed.length > 0
+          ? `${result.updated.length} atualizado(s), ${result.failed.length} não puderam ser atualizados.`
+          : null,
+      );
+    },
+  });
+
+  function toggleSelected(ticket: Ticket, checked: boolean) {
+    setSelected((prev) => {
+      const next = new Map(prev);
+      if (checked) next.set(ticket.id, ticket);
+      else next.delete(ticket.id);
+      return next;
+    });
+  }
+
+  function toggleSelectAllOnPage(checked: boolean) {
+    if (!query.data) return;
+    setSelected((prev) => {
+      const next = new Map(prev);
+      for (const ticket of query.data.items) {
+        if (checked) next.set(ticket.id, ticket);
+        else next.delete(ticket.id);
+      }
+      return next;
+    });
+  }
+
+  function applyBulkUpdate() {
+    if (selected.size === 0) return;
+    const payload: BulkUpdatePayload = { ticketNumbers: [...selected.values()].map((t) => t.number) };
+    if (bulkStatus !== ALL) payload.status = bulkStatus as TicketStatus;
+    if (bulkPriority !== ALL) payload.priority = bulkPriority as TicketPriority;
+    if (bulkAssigneeId !== ALL) payload.assigneeIds = bulkAssigneeId === UNASSIGNED ? [] : [bulkAssigneeId];
+    if (!payload.status && !payload.priority && !payload.assigneeIds) return;
+    setBulkFeedback(null);
+    bulkUpdateMutation.mutate(payload);
+  }
+
+  const allOnPageSelected =
+    !!query.data && query.data.items.length > 0 && query.data.items.every((t) => selected.has(t.id));
+  const hasBulkChange = bulkStatus !== ALL || bulkPriority !== ALL || bulkAssigneeId !== ALL;
 
   function updateFilter(key: FilterKey, value: string | null) {
     const params = new URLSearchParams(searchParams);
@@ -212,6 +299,103 @@ export default function TicketsPage() {
 
       <div className="flex min-h-0 flex-1 items-stretch gap-6">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          {isAgentOrAdmin && selected.size > 0 ? (
+            <div className="mb-4 flex shrink-0 flex-wrap items-center gap-2 rounded-md border bg-muted/40 px-3 py-2">
+              <span className="text-sm font-medium">{selected.size} selecionado(s)</span>
+
+              <Select value={bulkStatus} onValueChange={(value) => setBulkStatus(value ?? ALL)}>
+                <SelectTrigger className="h-8 w-40 text-xs">
+                  <SelectValue placeholder="Status">
+                    {(value: string | null) =>
+                      !value || value === ALL ? "Alterar status" : STATUS_LABELS[value as TicketStatus]
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>Alterar status</SelectItem>
+                  {TICKET_STATUSES.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {STATUS_LABELS[s]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={bulkPriority} onValueChange={(value) => setBulkPriority(value ?? ALL)}>
+                <SelectTrigger className="h-8 w-44 text-xs">
+                  <SelectValue placeholder="Prioridade">
+                    {(value: string | null) =>
+                      !value || value === ALL ? "Alterar prioridade" : PRIORITY_LABELS[value as TicketPriority]
+                    }
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>Alterar prioridade</SelectItem>
+                  {TICKET_PRIORITIES.map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {PRIORITY_LABELS[p]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={bulkAssigneeId} onValueChange={(value) => setBulkAssigneeId(value ?? ALL)}>
+                <SelectTrigger className="h-8 w-44 text-xs">
+                  <SelectValue placeholder="Responsável" className="min-w-0">
+                    {(value: string | null) => {
+                      if (!value || value === ALL) return "Alterar responsável";
+                      if (value === UNASSIGNED) return "Ninguém atribuído";
+                      return (
+                        <span className="min-w-0 truncate">
+                          {agentsQuery.data?.find((a) => a.id === value)?.name ?? null}
+                        </span>
+                      );
+                    }}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>Alterar responsável</SelectItem>
+                  <SelectItem value={UNASSIGNED}>Ninguém atribuído</SelectItem>
+                  {(agentsQuery.data ?? []).map((agent) => (
+                    <SelectItem key={agent.id} value={agent.id}>
+                      {agent.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Button
+                size="sm"
+                className="h-8"
+                disabled={!hasBulkChange || bulkUpdateMutation.isPending}
+                onClick={applyBulkUpdate}
+              >
+                {bulkUpdateMutation.isPending && <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />}
+                Aplicar
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8"
+                onClick={() => setSelected(new Map())}
+                disabled={bulkUpdateMutation.isPending}
+              >
+                Limpar seleção
+              </Button>
+
+              {bulkFeedback && <span className="text-xs text-muted-foreground">{bulkFeedback}</span>}
+            </div>
+          ) : (
+            bulkFeedback && (
+              <div className="mb-4 flex shrink-0 items-center justify-between rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                <span>{bulkFeedback}</span>
+                <Button variant="ghost" size="sm" className="h-6" onClick={() => setBulkFeedback(null)}>
+                  <X className="size-3.5" aria-hidden="true" />
+                </Button>
+              </div>
+            )
+          )}
+
           <div className="relative mb-4 shrink-0">
             <Search
               className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
@@ -257,6 +441,18 @@ export default function TicketsPage() {
           {query.data && (
             <>
               <div className="min-h-0 flex-1 divide-y overflow-y-auto rounded-md border bg-background">
+                {isAgentOrAdmin && query.data.items.length > 0 && (
+                  <div className="flex items-center gap-3 bg-muted/30 px-4 py-2">
+                    <Checkbox
+                      checked={allOnPageSelected}
+                      onCheckedChange={(checked) => toggleSelectAllOnPage(checked === true)}
+                      aria-label="Selecionar todos os chamados desta página"
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      Selecionar todos desta página
+                    </span>
+                  </div>
+                )}
                 {query.data.items.length === 0 && (
                   <div className="flex flex-col items-center justify-center gap-3 px-4 py-16 text-center text-muted-foreground">
                     <Inbox className="size-9" aria-hidden="true" />
@@ -291,31 +487,43 @@ export default function TicketsPage() {
                     : "Ninguém atribuído";
 
                   return (
-                    <Link
+                    <div
                       key={ticket.id}
-                      href={`/tickets/${ticket.number}`}
                       className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-muted/50"
                     >
-                      <StatusDot status={ticket.status} className="mt-1.5 shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="min-w-0 truncate">
-                            <span className="text-muted-foreground">#{ticket.number}</span>{" "}
-                            <span className="font-medium">{ticket.title}</span>
-                          </span>
-                          <PriorityBadge priority={ticket.priority} />
+                      {isAgentOrAdmin && (
+                        <Checkbox
+                          className="mt-1.5"
+                          checked={selected.has(ticket.id)}
+                          onCheckedChange={(checked) => toggleSelected(ticket, checked === true)}
+                          aria-label={`Selecionar chamado #${ticket.number}`}
+                        />
+                      )}
+                      <Link
+                        href={`/tickets/${ticket.number}`}
+                        className="flex min-w-0 flex-1 items-start gap-3"
+                      >
+                        <StatusDot status={ticket.status} className="mt-1.5 shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="min-w-0 truncate">
+                              <span className="text-muted-foreground">#{ticket.number}</span>{" "}
+                              <span className="font-medium">{ticket.title}</span>
+                            </span>
+                            <PriorityBadge priority={ticket.priority} />
+                          </div>
+                          <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <span className="truncate">
+                              {ticket.requester?.name ?? "Desconhecido"}
+                            </span>
+                            <ArrowRight className="size-3 shrink-0" aria-hidden="true" />
+                            <span className="truncate">{assigneeText}</span>
+                            <span aria-hidden="true">·</span>
+                            <span className="shrink-0">{formatDateTime(ticket.createdAt)}</span>
+                          </div>
                         </div>
-                        <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <span className="truncate">
-                            {ticket.requester?.name ?? "Desconhecido"}
-                          </span>
-                          <ArrowRight className="size-3 shrink-0" aria-hidden="true" />
-                          <span className="truncate">{assigneeText}</span>
-                          <span aria-hidden="true">·</span>
-                          <span className="shrink-0">{formatDateTime(ticket.createdAt)}</span>
-                        </div>
-                      </div>
-                    </Link>
+                      </Link>
+                    </div>
                   );
                 })}
               </div>
