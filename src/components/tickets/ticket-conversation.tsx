@@ -194,9 +194,9 @@ export function TicketConversation({
   };
 
   return (
-    <Card className="flex min-h-0 flex-1 flex-col gap-0 overflow-hidden p-0">
-      <CardContent className="flex h-full min-h-0 flex-col gap-0 p-0">
-        <div ref={listRef} className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-4">
+    <Card className="flex min-h-0 min-w-0 flex-1 flex-col gap-0 overflow-hidden p-0">
+      <CardContent className="flex h-full min-h-0 min-w-0 flex-col gap-0 p-0">
+        <div ref={listRef} className="flex min-h-0 min-w-0 flex-1 flex-col gap-1 overflow-y-auto p-4">
           {timeline.length === 0 && (
             <p className="m-auto text-sm text-muted-foreground">
               Nenhuma mensagem ainda. Escreva a primeira abaixo.
@@ -224,7 +224,7 @@ export function TicketConversation({
               <div
                 key={entry.id}
                 className={cn(
-                  "flex gap-2",
+                  "flex min-w-0 gap-2",
                   isOwn && "flex-row-reverse",
                   !isGrouped && index > 0 && "mt-3",
                   // Desliza do lado onde a mensagem aparece (direita se é sua,
@@ -256,7 +256,11 @@ export function TicketConversation({
                             : "bg-muted",
                       )}
                     >
-                      <p className="whitespace-pre-wrap break-words">{entry.comment.body}</p>
+                      {/* wrap-anywhere (não só break-words): força a quebra mesmo dentro
+                          do cálculo de largura mínima do flexbox — um texto sem espaços
+                          (ex: URL longa) só quebra visualmente com break-words, mas ainda
+                          empurra os containers pais na hora de medir o tamanho mínimo. */}
+                      <p className="wrap-anywhere whitespace-pre-wrap">{entry.comment.body}</p>
                       <p
                         className={cn(
                           "mt-1 text-[10px] leading-none select-none",
