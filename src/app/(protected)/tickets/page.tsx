@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { cn } from "cn";
 import {
   ArrowRight,
   ChevronLeft,
@@ -33,10 +34,10 @@ import { apiClient } from "@/lib/api-client";
 import { useSession } from "@/lib/session-context";
 import { formatDateTime } from "@/lib/tickets/format";
 import {
+  ACTIVE_TICKET_STATUSES,
   PRIORITY_LABELS,
   STATUS_LABELS,
   TICKET_PRIORITIES,
-  TICKET_STATUSES,
   type CategorySummary,
   type ListTicketsResult,
   type TicketPriority,
@@ -47,6 +48,8 @@ import {
 const PAGE_SIZE = 20;
 const ALL = "ALL";
 
+type TicketView = "active" | "resolved";
+
 type FilterKey = "status" | "priority" | "categoryId" | "assigneeId" | "search";
 
 export default function TicketsPage() {
@@ -56,6 +59,7 @@ export default function TicketsPage() {
   const isAdmin = session.role === "ADMIN";
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
+  const view: TicketView = searchParams.get("view") === "resolved" ? "resolved" : "active";
   const status = searchParams.get("status") ?? ALL;
   const priority = searchParams.get("priority") ?? ALL;
   const categoryId = searchParams.get("categoryId") ?? ALL;
@@ -100,9 +104,13 @@ export default function TicketsPage() {
   });
 
   const query = useQuery({
-    queryKey: ["tickets", { status, priority, categoryId, assigneeId, search, page }],
+    queryKey: ["tickets", { view, status, priority, categoryId, assigneeId, search, page }],
     queryFn: () => {
-      const params = new URLSearchParams({ page: String(page), pageSize: String(PAGE_SIZE) });
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: String(PAGE_SIZE),
+        resolved: String(view === "resolved"),
+      });
       if (status !== ALL) params.set("status", status);
       if (priority !== ALL) params.set("priority", priority);
       if (categoryId !== ALL) params.set("categoryId", categoryId);
@@ -120,8 +128,20 @@ export default function TicketsPage() {
     router.push(`/tickets?${params.toString()}`);
   }
 
+  // Resolvido tem aba própria — trocar de aba zera o filtro de status (a
+  // "Resolvidos" nem mostra esse filtro) e a página, mas mantém prioridade,
+  // categoria, responsável e busca.
+  function switchView(nextView: TicketView) {
+    const params = new URLSearchParams(searchParams);
+    if (nextView === "active") params.delete("view");
+    else params.set("view", nextView);
+    params.delete("status");
+    params.delete("page");
+    router.push(`/tickets?${params.toString()}`);
+  }
+
   function clearFilters() {
-    router.push("/tickets");
+    router.push(view === "resolved" ? "/tickets?view=resolved" : "/tickets");
     setIsFiltersOpen(false);
   }
 
@@ -135,7 +155,7 @@ export default function TicketsPage() {
 
   return (
     <div className="mx-auto flex h-full min-h-0 max-w-6xl flex-col px-6 py-8">
-      <div className="mb-6 flex shrink-0 items-center justify-between">
+      <div className="mb-4 flex shrink-0 items-center justify-between">
         <div className="flex items-center gap-2.5">
           <h1 className="text-xl font-semibold">Chamados</h1>
           {query.data && (
@@ -161,6 +181,33 @@ export default function TicketsPage() {
           </Button>
           <Button nativeButton={false} render={<Link href="/tickets/new">Novo chamado</Link>} />
         </div>
+      </div>
+
+      <div className="mb-6 flex shrink-0 gap-1 border-b">
+        <button
+          type="button"
+          onClick={() => switchView("active")}
+          className={cn(
+            "-mb-px border-b-2 px-1 pb-2 text-sm font-medium transition-colors",
+            view === "active"
+              ? "border-foreground text-foreground"
+              : "border-transparent text-muted-foreground hover:text-foreground",
+          )}
+        >
+          Ativos
+        </button>
+        <button
+          type="button"
+          onClick={() => switchView("resolved")}
+          className={cn(
+            "-mb-px ml-4 border-b-2 px-1 pb-2 text-sm font-medium transition-colors",
+            view === "resolved"
+              ? "border-foreground text-foreground"
+              : "border-transparent text-muted-foreground hover:text-foreground",
+          )}
+        >
+          Resolvidos
+        </button>
       </div>
 
       <div className="flex min-h-0 flex-1 items-stretch gap-6">
@@ -215,15 +262,19 @@ export default function TicketsPage() {
                     <Inbox className="size-9" aria-hidden="true" />
                     <div className="flex flex-col gap-1">
                       <p className="text-sm font-medium text-foreground">
-                        Nenhum chamado encontrado
+                        {view === "resolved"
+                          ? "Nenhum chamado resolvido"
+                          : "Nenhum chamado encontrado"}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {hasActiveFilters
                           ? "Tente ajustar ou limpar os filtros."
-                          : "Quando um chamado for aberto, ele aparece aqui."}
+                          : view === "resolved"
+                            ? "Chamados resolvidos aparecem aqui."
+                            : "Quando um chamado for aberto, ele aparece aqui."}
                       </p>
                     </div>
-                    {!hasActiveFilters && (
+                    {!hasActiveFilters && view === "active" && (
                       <Button
                         size="sm"
                         className="mt-1"
@@ -300,6 +351,7 @@ export default function TicketsPage() {
 
         <aside className="hidden w-64 shrink-0 overflow-y-auto lg:block">
           <TicketFilters
+            view={view}
             status={status}
             priority={priority}
             categoryId={categoryId}
@@ -321,6 +373,7 @@ export default function TicketsPage() {
           </SheetHeader>
           <div className="px-4 pb-4">
             <TicketFilters
+              view={view}
               status={status}
               priority={priority}
               categoryId={categoryId}
@@ -343,6 +396,7 @@ export default function TicketsPage() {
 }
 
 function TicketFilters({
+  view,
   status,
   priority,
   categoryId,
@@ -355,6 +409,7 @@ function TicketFilters({
   onChange,
   onClear,
 }: {
+  view: TicketView;
   status: string;
   priority: string;
   categoryId: string;
@@ -383,26 +438,30 @@ function TicketFilters({
         )}
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label>Status</Label>
-        <Select value={status} onValueChange={(value) => onChange("status", value)}>
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Status">
-              {(value: string | null) =>
-                !value || value === ALL ? "Todos os status" : STATUS_LABELS[value as TicketStatus]
-              }
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>Todos os status</SelectItem>
-            {TICKET_STATUSES.map((s: TicketStatus) => (
-              <SelectItem key={s} value={s}>
-                {STATUS_LABELS[s]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {view === "active" && (
+        <div className="flex flex-col gap-1.5">
+          <Label>Status</Label>
+          <Select value={status} onValueChange={(value) => onChange("status", value)}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Status">
+                {(value: string | null) =>
+                  !value || value === ALL
+                    ? "Todos os status"
+                    : STATUS_LABELS[value as TicketStatus]
+                }
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>Todos os status</SelectItem>
+              {ACTIVE_TICKET_STATUSES.map((s: TicketStatus) => (
+                <SelectItem key={s} value={s}>
+                  {STATUS_LABELS[s]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <div className="flex flex-col gap-1.5">
         <Label>Prioridade</Label>
