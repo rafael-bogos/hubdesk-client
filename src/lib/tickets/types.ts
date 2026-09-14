@@ -1,11 +1,17 @@
-export type TicketStatus = "OPEN" | "IN_PROGRESS" | "WAITING" | "RESOLVED";
+export type TicketStatus = "OPEN" | "IN_PROGRESS" | "WAITING" | "PENDING_CLOSURE" | "RESOLVED";
 export type TicketPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 
-export const TICKET_STATUSES: TicketStatus[] = ["OPEN", "IN_PROGRESS", "WAITING", "RESOLVED"];
+export const TICKET_STATUSES: TicketStatus[] = [
+  "OPEN",
+  "IN_PROGRESS",
+  "WAITING",
+  "PENDING_CLOSURE",
+  "RESOLVED",
+];
 
 // Pra filtrar a fila principal (ver tickets/page.tsx): resolvido tem aba
 // própria, não aparece como opção de filtro de status ali.
-export const ACTIVE_TICKET_STATUSES: TicketStatus[] = ["OPEN", "IN_PROGRESS", "WAITING"];
+export const ACTIVE_TICKET_STATUSES: TicketStatus[] = ["OPEN", "IN_PROGRESS", "WAITING", "PENDING_CLOSURE"];
 
 export const TICKET_PRIORITIES: TicketPriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 
@@ -13,6 +19,7 @@ export const STATUS_LABELS: Record<TicketStatus, string> = {
   OPEN: "Aberto",
   IN_PROGRESS: "Em andamento",
   WAITING: "Aguardando",
+  PENDING_CLOSURE: "Pendente de fechamento",
   RESOLVED: "Resolvido",
 };
 
@@ -47,6 +54,8 @@ export interface Ticket {
   createdAt: string;
   updatedAt: string;
   closedAt: string | null;
+  // Só não-null enquanto status === "PENDING_CLOSURE".
+  scheduledClosureAt: string | null;
   // Presentes em GET /tickets e GET /tickets/:id; ausentes nas respostas de
   // mutações (status/assign), que devolvem o ticket "cru" do repositório.
   requester?: UserSummary | null;

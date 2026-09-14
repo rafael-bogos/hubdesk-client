@@ -11,6 +11,7 @@ import { PriorityBadge } from "@/components/tickets/priority-badge";
 import { StatusBadge } from "@/components/tickets/status-badge";
 import { TicketConversation } from "@/components/tickets/ticket-conversation";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -25,7 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { UserAvatar } from "@/components/user-avatar";
 import { apiClient } from "@/lib/api-client";
 import { useSession } from "@/lib/session-context";
-import { formatDateTime, shortId } from "@/lib/tickets/format";
+import { formatDateTime, shortId, toDatetimeLocalValue } from "@/lib/tickets/format";
 import {
   STATUS_LABELS,
   TICKET_STATUSES,
@@ -182,11 +183,18 @@ function TicketDetailsPanel({
   onChange: () => void;
 }) {
   const session = useSession();
+  // Não-null enquanto o usuário está escolhendo a data/hora do fechamento
+  // automático (só existe entre selecionar "Pendente de fechamento" e
+  // confirmar ou cancelar) — guarda o valor cru do <input type="datetime-local">.
+  const [closureDraft, setClosureDraft] = useState<string | null>(null);
 
   const updateStatus = useMutation({
-    mutationFn: (status: TicketStatus) =>
-      apiClient.patch<Ticket>(`tickets/${ticket.number}/status`, { status }),
-    onSuccess: onChange,
+    mutationFn: ({ status, scheduledClosureAt }: { status: TicketStatus; scheduledClosureAt?: string }) =>
+      apiClient.patch<Ticket>(`tickets/${ticket.number}/status`, { status, scheduledClosureAt }),
+    onSuccess: () => {
+      setClosureDraft(null);
+      onChange();
+    },
   });
 
   const assign = useMutation({
@@ -237,8 +245,18 @@ function TicketDetailsPanel({
             <div className="flex flex-col gap-1.5">
               <Label>Status</Label>
               <Select
-                value={ticket.status}
-                onValueChange={(value) => updateStatus.mutate(value as TicketStatus)}
+                value={closureDraft !== null ? "PENDING_CLOSURE" : ticket.status}
+                onValueChange={(value) => {
+                  const status = value as TicketStatus;
+                  if (status === "PENDING_CLOSURE") {
+                    // Data futura padrão: daqui a 24h, só pra já vir com algo
+                    // preenchido — o usuário ajusta antes de confirmar.
+                    setClosureDraft(toDatetimeLocalValue(new Date(Date.now() + 24 * 60 * 60 * 1000)));
+                    return;
+                  }
+                  setClosureDraft(null);
+                  updateStatus.mutate({ status });
+                }}
               >
                 <SelectTrigger className="w-full">
                   <SelectValue>
@@ -253,6 +271,60 @@ function TicketDetailsPanel({
                   ))}
                 </SelectContent>
               </Select>
+
+              {closureDraft !== null ? (
+                <div className="flex flex-col gap-2 rounded-lg border p-2.5">
+                  <Label htmlFor="closure-datetime" className="text-xs text-muted-foreground">
+                    Fecha automaticamente em
+                  </Label>
+                  <Input
+                    id="closure-datetime"
+                    type="datetime-local"
+                    value={closureDraft}
+                    min={toDatetimeLocalValue(new Date())}
+                    onChange={(e) => setClosureDraft(e.target.value)}
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="flex-1"
+                      disabled={!closureDraft || updateStatus.isPending}
+                      onClick={() =>
+                        updateStatus.mutate({
+                          status: "PENDING_CLOSURE",
+                          scheduledClosureAt: new Date(closureDraft).toISOString(),
+                        })
+                      }
+                    >
+                      Confirmar
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={updateStatus.isPending}
+                      onClick={() => setClosureDraft(null)}
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                ticket.status === "PENDING_CLOSURE" &&
+                ticket.scheduledClosureAt && (
+                  <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                    <span>Fecha em {formatDateTime(ticket.scheduledClosureAt)}</span>
+                    <button
+                      type="button"
+                      className="cursor-pointer font-medium text-foreground hover:underline"
+                      onClick={() => setClosureDraft(toDatetimeLocalValue(new Date(ticket.scheduledClosureAt!)))}
+                    >
+                      Alterar
+                    </button>
+                  </div>
+                )
+              )}
             </div>
 
             <div className="flex flex-col gap-1.5">

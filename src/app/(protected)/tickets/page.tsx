@@ -34,7 +34,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiClient } from "@/lib/api-client";
 import { useSession } from "@/lib/session-context";
-import { formatDateTime } from "@/lib/tickets/format";
+import { formatDateTime, toDatetimeLocalValue } from "@/lib/tickets/format";
 import {
   ACTIVE_TICKET_STATUSES,
   PRIORITY_LABELS,
@@ -60,6 +60,7 @@ type FilterKey = "status" | "priority" | "categoryId" | "assigneeId" | "search";
 interface BulkUpdatePayload {
   ticketNumbers: number[];
   status?: TicketStatus;
+  scheduledClosureAt?: string;
   priority?: TicketPriority;
   assigneeIds?: string[];
 }
@@ -153,6 +154,9 @@ export default function TicketsPage() {
   const [bulkStatus, setBulkStatus] = useState(ALL);
   const [bulkPriority, setBulkPriority] = useState(ALL);
   const [bulkAssigneeId, setBulkAssigneeId] = useState(ALL);
+  // Só usado quando bulkStatus === "PENDING_CLOSURE" — valor cru do
+  // <input type="datetime-local">, vazio até o usuário escolher algo.
+  const [bulkScheduledClosureAt, setBulkScheduledClosureAt] = useState("");
   const [bulkFeedback, setBulkFeedback] = useState<string | null>(null);
 
   const bulkUpdateMutation = useMutation({
@@ -163,6 +167,7 @@ export default function TicketsPage() {
       setBulkStatus(ALL);
       setBulkPriority(ALL);
       setBulkAssigneeId(ALL);
+      setBulkScheduledClosureAt("");
       setBulkFeedback(
         result.failed.length > 0
           ? `${result.updated.length} atualizado(s), ${result.failed.length} não puderam ser atualizados.`
@@ -194,8 +199,13 @@ export default function TicketsPage() {
 
   function applyBulkUpdate() {
     if (selected.size === 0) return;
+    if (bulkStatus === "PENDING_CLOSURE" && !bulkScheduledClosureAt) return;
+
     const payload: BulkUpdatePayload = { ticketNumbers: [...selected.values()].map((t) => t.number) };
     if (bulkStatus !== ALL) payload.status = bulkStatus as TicketStatus;
+    if (bulkStatus === "PENDING_CLOSURE") {
+      payload.scheduledClosureAt = new Date(bulkScheduledClosureAt).toISOString();
+    }
     if (bulkPriority !== ALL) payload.priority = bulkPriority as TicketPriority;
     if (bulkAssigneeId !== ALL) payload.assigneeIds = bulkAssigneeId === UNASSIGNED ? [] : [bulkAssigneeId];
     if (!payload.status && !payload.priority && !payload.assigneeIds) return;
@@ -205,7 +215,10 @@ export default function TicketsPage() {
 
   const allOnPageSelected =
     !!query.data && query.data.items.length > 0 && query.data.items.every((t) => selected.has(t.id));
-  const hasBulkChange = bulkStatus !== ALL || bulkPriority !== ALL || bulkAssigneeId !== ALL;
+  const hasBulkChange =
+    (bulkStatus !== ALL && (bulkStatus !== "PENDING_CLOSURE" || !!bulkScheduledClosureAt)) ||
+    bulkPriority !== ALL ||
+    bulkAssigneeId !== ALL;
 
   function updateFilter(key: FilterKey, value: string | null) {
     const params = new URLSearchParams(searchParams);
@@ -303,7 +316,16 @@ export default function TicketsPage() {
             <div className="mb-4 flex shrink-0 flex-wrap items-center gap-2 rounded-md border bg-muted/40 px-3 py-2">
               <span className="text-sm font-medium">{selected.size} selecionado(s)</span>
 
-              <Select value={bulkStatus} onValueChange={(value) => setBulkStatus(value ?? ALL)}>
+              <Select
+                value={bulkStatus}
+                onValueChange={(value) => {
+                  const next = value ?? ALL;
+                  setBulkStatus(next);
+                  if (next === "PENDING_CLOSURE" && !bulkScheduledClosureAt) {
+                    setBulkScheduledClosureAt(toDatetimeLocalValue(new Date(Date.now() + 24 * 60 * 60 * 1000)));
+                  }
+                }}
+              >
                 <SelectTrigger className="h-8 w-40 text-xs">
                   <SelectValue placeholder="Status">
                     {(value: string | null) =>
@@ -320,6 +342,17 @@ export default function TicketsPage() {
                   ))}
                 </SelectContent>
               </Select>
+
+              {bulkStatus === "PENDING_CLOSURE" && (
+                <Input
+                  type="datetime-local"
+                  className="h-8 w-52 text-xs"
+                  value={bulkScheduledClosureAt}
+                  min={toDatetimeLocalValue(new Date())}
+                  onChange={(e) => setBulkScheduledClosureAt(e.target.value)}
+                  aria-label="Data e horário do fechamento automático"
+                />
+              )}
 
               <Select value={bulkPriority} onValueChange={(value) => setBulkPriority(value ?? ALL)}>
                 <SelectTrigger className="h-8 w-44 text-xs">
