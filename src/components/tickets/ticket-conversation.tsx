@@ -245,6 +245,23 @@ export function TicketConversation({
                     <span className="text-xs font-medium text-foreground">{authorName}</span>
                   )}
 
+                  {entry.kind === "comment" && entry.attachments.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {entry.attachments.map((attachment) => (
+                        // Sem toggle próprio aqui: texto + anexo(s) enviados juntos são UMA
+                        // mensagem visualmente, com UM controle de "nota interna" só (abaixo,
+                        // ao nível do comentário) — dois botões empilhados pra mesma bolha
+                        // confundia mais do que ajudava.
+                        <AttachmentChip
+                          key={attachment.id}
+                          ticketId={ticket.number}
+                          attachment={attachment}
+                          isOwn={isOwn}
+                        />
+                      ))}
+                    </div>
+                  )}
+
                   {entry.kind === "comment" && entry.comment.body && (
                     <div
                       className={cn(
@@ -277,24 +294,6 @@ export function TicketConversation({
                     </div>
                   )}
 
-                  {entry.kind === "comment" && entry.attachments.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {entry.attachments.map((attachment) => (
-                        <AttachmentChip
-                          key={attachment.id}
-                          ticketId={ticket.number}
-                          attachment={attachment}
-                          canToggleInternal={isAgentOrAdmin && attachment.uploadedById === session.id}
-                          isToggling={toggleAttachmentInternal.isPending}
-                          isOwn={isOwn}
-                          onToggleInternal={(nextIsInternal) =>
-                            toggleAttachmentInternal.mutate({ attachmentId: attachment.id, isInternal: nextIsInternal })
-                          }
-                        />
-                      ))}
-                    </div>
-                  )}
-
                   {entry.kind === "attachment" && (
                     <AttachmentChip
                       ticketId={ticket.number}
@@ -311,13 +310,19 @@ export function TicketConversation({
                   {isAgentOrAdmin && entry.kind === "comment" && isOwn && (
                     <button
                       type="button"
-                      onClick={() =>
-                        toggleCommentInternal.mutate({
-                          commentId: entry.comment.id,
-                          isInternal: !entry.comment.isInternal,
-                        })
-                      }
-                      disabled={toggleCommentInternal.isPending}
+                      onClick={() => {
+                        const nextIsInternal = !entry.comment.isInternal;
+                        toggleCommentInternal.mutate({ commentId: entry.comment.id, isInternal: nextIsInternal });
+                        // Um só controle pra texto + anexo(s) dessa mensagem — o toggle do
+                        // comentário arrasta os anexos junto pra não ficarem com
+                        // visibilidade dessincronizada entre si.
+                        for (const attachment of entry.attachments) {
+                          if (attachment.isInternal !== nextIsInternal) {
+                            toggleAttachmentInternal.mutate({ attachmentId: attachment.id, isInternal: nextIsInternal });
+                          }
+                        }
+                      }}
+                      disabled={toggleCommentInternal.isPending || toggleAttachmentInternal.isPending}
                       className="flex items-center gap-1 px-1 text-[11px] text-muted-foreground hover:text-foreground hover:underline disabled:opacity-50"
                     >
                       {entry.comment.isInternal ? (
