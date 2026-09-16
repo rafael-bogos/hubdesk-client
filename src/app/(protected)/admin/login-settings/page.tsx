@@ -2,23 +2,18 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, Loader2, X } from "lucide-react";
+import { cn } from "cn";
+import { Building2, Check, Loader2, Mail, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
+import { GoogleIcon } from "@/components/icons/google-icon";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ApiError, apiClient } from "@/lib/api-client";
 import type { AdminLoginSettings, DefaultLoginMethod } from "@/lib/admin/types";
 
@@ -44,12 +39,6 @@ const settingsSchema = z.object({
 });
 
 type SettingsValues = z.infer<typeof settingsSchema>;
-
-const DEFAULT_METHOD_LABELS: Record<DefaultLoginMethod, string> = {
-  google: "Google",
-  custom: "OAuth customizado",
-  email: "E-mail e senha",
-};
 
 const EMPTY_VALUES: SettingsValues = {
   emailPasswordEnabled: true,
@@ -157,8 +146,10 @@ export default function AdminLoginSettingsPage() {
     },
   });
 
+  const emailPasswordEnabled = useWatch({ control, name: "emailPasswordEnabled" });
   const googleEnabled = useWatch({ control, name: "googleEnabled" });
   const customOAuthEnabled = useWatch({ control, name: "customOAuthEnabled" });
+  const customOAuthProviderName = useWatch({ control, name: "customOAuthProviderName" });
 
   if (query.isLoading) {
     return <p className="text-sm text-muted-foreground">Carregando…</p>;
@@ -170,6 +161,22 @@ export default function AdminLoginSettingsPage() {
     );
   }
 
+  const methodOptions: { value: DefaultLoginMethod; label: string; enabled: boolean; icon: React.ReactNode }[] = [
+    { value: "google", label: "Google", enabled: googleEnabled, icon: <GoogleIcon className="size-5" /> },
+    {
+      value: "custom",
+      label: customOAuthProviderName || "OAuth customizado",
+      enabled: customOAuthEnabled,
+      icon: query.data.customOAuthLogoUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- imagem enviada pelo admin, servida pelo backend
+        <img src={query.data.customOAuthLogoUrl} alt="" className="size-5 rounded object-contain" />
+      ) : (
+        <Building2 className="size-5" aria-hidden="true" />
+      ),
+    },
+    { value: "email", label: "E-mail e senha", enabled: emailPasswordEnabled, icon: <Mail className="size-5" aria-hidden="true" /> },
+  ];
+
   return (
     <form
       className="flex flex-col gap-6"
@@ -178,38 +185,68 @@ export default function AdminLoginSettingsPage() {
         mutation.mutate(values);
       })}
     >
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold">Login</h1>
-          <p className="text-sm text-muted-foreground">
-            Escolha como as pessoas podem entrar no Hubdesk.
-          </p>
+      {/* Sticky: a página fica longa com o OAuth customizado expandido — sem
+          isso, o botão de salvar (e a confirmação depois de salvar) ficavam
+          fora da tela pra quem estivesse mexendo nos campos mais abaixo. */}
+      <div className="sticky top-0 z-10 -mx-6 border-b bg-background px-6 py-4">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-semibold">Login</h1>
+            <p className="text-sm text-muted-foreground">
+              Escolha como as pessoas podem entrar no Hubdesk.
+            </p>
+          </div>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Salvando..." : "Salvar"}
+          </Button>
         </div>
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Salvando..." : "Salvar"}
-        </Button>
+        {errors.root && (
+          <p role="alert" className="mt-2 text-sm text-destructive">
+            {errors.root.message}
+          </p>
+        )}
+        {saved && !errors.root && <p className="mt-2 text-sm text-emerald-600">Configurações salvas.</p>}
       </div>
 
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-2">
         <Label>Método em destaque na tela de login</Label>
         <Controller
           name="defaultMethod"
           control={control}
           render={({ field }) => (
-            <Select value={field.value} onValueChange={(v) => v && field.onChange(v as DefaultLoginMethod)}>
-              <SelectTrigger className="w-64">
-                <SelectValue>
-                  {(value: string | null) =>
-                    value ? DEFAULT_METHOD_LABELS[value as DefaultLoginMethod] : null
-                  }
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="google">Google</SelectItem>
-                <SelectItem value="custom">OAuth customizado</SelectItem>
-                <SelectItem value="email">E-mail e senha</SelectItem>
-              </SelectContent>
-            </Select>
+            <div role="radiogroup" aria-label="Método em destaque na tela de login" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {methodOptions.map((option) => {
+                const selected = field.value === option.value;
+                return (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    disabled={!option.enabled}
+                    onClick={() => field.onChange(option.value)}
+                    className={cn(
+                      "relative flex flex-col items-center gap-2 rounded-lg border-2 px-3 py-4 text-center transition-colors",
+                      selected ? "border-primary bg-primary/5" : "border-border hover:border-primary/40",
+                      !option.enabled && "cursor-not-allowed opacity-40 hover:border-border",
+                    )}
+                  >
+                    {selected && (
+                      <span className="absolute top-2 right-2 flex size-4 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                        <Check className="size-3" aria-hidden="true" />
+                      </span>
+                    )}
+                    <span className="flex size-10 items-center justify-center rounded-full bg-muted">
+                      {option.icon}
+                    </span>
+                    <span className="text-sm font-medium">{option.label}</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      {option.enabled ? "Habilitado" : "Desabilitado"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           )}
         />
       </div>
@@ -458,12 +495,6 @@ export default function AdminLoginSettingsPage() {
         </CardContent>
       </Card>
 
-      {errors.root && (
-        <p role="alert" className="text-sm text-destructive">
-          {errors.root.message}
-        </p>
-      )}
-      {saved && !errors.root && <p className="text-sm text-emerald-600">Configurações salvas.</p>}
     </form>
   );
 }
