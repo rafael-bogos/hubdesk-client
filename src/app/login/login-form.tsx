@@ -84,6 +84,7 @@ function OAuthButton({
 
 const ERROR_MESSAGES: Record<string, string> = {
   oauth_failed: "Não foi possível entrar com esse provedor. Tente novamente.",
+  session_expired: "Sua sessão expirou. Entre novamente.",
 };
 
 export function LoginForm({ loginMethods }: { loginMethods: LoginMethods }) {

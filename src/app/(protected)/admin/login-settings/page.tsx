@@ -39,6 +39,8 @@ const settingsSchema = z.object({
   customOAuthTokenUrl: z.string(),
   customOAuthUserInfoUrl: z.string(),
   customOAuthScopes: z.string(),
+  customOAuthIssuer: z.string(),
+  customOAuthJwksUrl: z.string(),
 });
 
 type SettingsValues = z.infer<typeof settingsSchema>;
@@ -64,6 +66,8 @@ const EMPTY_VALUES: SettingsValues = {
   customOAuthTokenUrl: "",
   customOAuthUserInfoUrl: "",
   customOAuthScopes: "",
+  customOAuthIssuer: "",
+  customOAuthJwksUrl: "",
 };
 
 function toFormValues(settings: AdminLoginSettings): SettingsValues {
@@ -82,6 +86,8 @@ function toFormValues(settings: AdminLoginSettings): SettingsValues {
     customOAuthTokenUrl: settings.customOAuthTokenUrl ?? "",
     customOAuthUserInfoUrl: settings.customOAuthUserInfoUrl ?? "",
     customOAuthScopes: settings.customOAuthScopes ?? "",
+    customOAuthIssuer: settings.customOAuthIssuer ?? "",
+    customOAuthJwksUrl: settings.customOAuthJwksUrl ?? "",
   };
 }
 
@@ -129,6 +135,8 @@ export default function AdminLoginSettingsPage() {
         customOAuthTokenUrl: values.customOAuthTokenUrl || undefined,
         customOAuthUserInfoUrl: values.customOAuthUserInfoUrl || undefined,
         customOAuthScopes: values.customOAuthScopes || undefined,
+        customOAuthIssuer: values.customOAuthIssuer || undefined,
+        customOAuthJwksUrl: values.customOAuthJwksUrl || undefined,
       };
       // Secret vazio = manter o já salvo — só manda quando o admin digitou algo.
       if (values.googleClientSecret) payload.googleClientSecret = values.googleClientSecret;
@@ -405,6 +413,45 @@ export default function AdminLoginSettingsPage() {
                   </code>
                 </div>
               )}
+
+              <div className="flex flex-col gap-3 border-t pt-4">
+                <div>
+                  <p className="text-sm font-medium">Back-channel logout (opcional)</p>
+                  <p className="text-xs text-muted-foreground">
+                    Se o provedor sair, ele avisa o Hubdesk pra derrubar a sessão local também. Preencha o
+                    issuer e a URL de JWKS pra habilitar — sem isso, nada é verificado.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="custom-issuer">Issuer</Label>
+                    <Input
+                      id="custom-issuer"
+                      placeholder="https://seu-provedor.com"
+                      {...register("customOAuthIssuer")}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="custom-jwks-url">URL de JWKS</Label>
+                    <Input
+                      id="custom-jwks-url"
+                      placeholder="https://.../.well-known/jwks.json"
+                      {...register("customOAuthJwksUrl")}
+                    />
+                  </div>
+                </div>
+                {query.data.customOAuthBackchannelLogoutUrl && (
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-xs text-muted-foreground">
+                      URL de back-channel logout (cole no seu provedor)
+                    </Label>
+                    <code className="w-fit rounded-md bg-muted px-2 py-1 text-xs break-all">
+                      {query.data.customOAuthBackchannelLogoutUrl}
+                    </code>
+                  </div>
+                )}
+              </div>
+
               <LogoUploader logoUrl={query.data.customOAuthLogoUrl} />
             </>
           )}

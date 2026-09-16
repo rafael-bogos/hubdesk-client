@@ -57,7 +57,10 @@ export interface AdminLoginSettings {
   customOAuthTokenUrl: string | null;
   customOAuthUserInfoUrl: string | null;
   customOAuthScopes: string | null;
+  customOAuthIssuer: string | null;
+  customOAuthJwksUrl: string | null;
   customOAuthCallbackUrl: string | null;
+  customOAuthBackchannelLogoutUrl: string | null;
   customOAuthLogoUrl: string | null;
 
   defaultMethod: DefaultLoginMethod;
