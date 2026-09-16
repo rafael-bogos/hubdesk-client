@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyRound, LayoutDashboard, LogOut, ShieldCheck, Tags, Ticket, Users } from "lucide-react";
+import { KeyRound, LayoutDashboard, LogOut, Settings, ShieldCheck, Tags, Ticket, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -53,6 +53,17 @@ export function AppSidebar() {
                     <Link href="/tickets">
                       <Ticket />
                       <span>Chamados</span>
+                    </Link>
+                  }
+                />
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  isActive={pathname.startsWith("/settings")}
+                  render={
+                    <Link href="/settings">
+                      <Settings />
+                      <span>Configurações</span>
                     </Link>
                   }
                 />

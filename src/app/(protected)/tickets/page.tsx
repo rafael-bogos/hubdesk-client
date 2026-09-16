@@ -228,8 +228,8 @@ export default function TicketsPage() {
     router.push(`/tickets?${params.toString()}`);
   }
 
-  // Resolvido tem aba própria — trocar de aba zera o filtro de status (a
-  // "Resolvidos" nem mostra esse filtro) e a página, mas mantém prioridade,
+  // Fechado tem aba própria — trocar de aba zera o filtro de status (a
+  // "Fechados" nem mostra esse filtro) e a página, mas mantém prioridade,
   // categoria, responsável e busca.
   function switchView(nextView: TicketView) {
     const params = new URLSearchParams(searchParams);
@@ -306,7 +306,7 @@ export default function TicketsPage() {
               : "border-transparent text-muted-foreground hover:text-foreground",
           )}
         >
-          Resolvidos
+          Fechados
         </button>
       </div>
 
@@ -492,14 +492,14 @@ export default function TicketsPage() {
                     <div className="flex flex-col gap-1">
                       <p className="text-sm font-medium text-foreground">
                         {view === "resolved"
-                          ? "Nenhum chamado resolvido"
+                          ? "Nenhum chamado fechado"
                           : "Nenhum chamado encontrado"}
                       </p>
                       <p className="text-sm text-muted-foreground">
                         {hasActiveFilters
                           ? "Tente ajustar ou limpar os filtros."
                           : view === "resolved"
-                            ? "Chamados resolvidos aparecem aqui."
+                            ? "Chamados fechados aparecem aqui."
                             : "Quando um chamado for aberto, ele aparece aqui."}
                       </p>
                     </div>

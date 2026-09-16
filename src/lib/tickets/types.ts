@@ -9,7 +9,7 @@ export const TICKET_STATUSES: TicketStatus[] = [
   "RESOLVED",
 ];
 
-// Pra filtrar a fila principal (ver tickets/page.tsx): resolvido tem aba
+// Pra filtrar a fila principal (ver tickets/page.tsx): fechado tem aba
 // própria, não aparece como opção de filtro de status ali.
 export const ACTIVE_TICKET_STATUSES: TicketStatus[] = ["OPEN", "IN_PROGRESS", "WAITING", "PENDING_CLOSURE"];
 
@@ -20,7 +20,7 @@ export const STATUS_LABELS: Record<TicketStatus, string> = {
   IN_PROGRESS: "Em andamento",
   WAITING: "Aguardando",
   PENDING_CLOSURE: "Pendente de fechamento",
-  RESOLVED: "Resolvido",
+  RESOLVED: "Fechado",
 };
 
 export const PRIORITY_LABELS: Record<TicketPriority, string> = {
