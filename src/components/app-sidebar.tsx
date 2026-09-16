@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyRound, LayoutDashboard, LogOut, Tags, Ticket, Users } from "lucide-react";
+import { KeyRound, LayoutDashboard, LogOut, ShieldCheck, Tags, Ticket, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
@@ -95,6 +95,17 @@ export function AppSidebar() {
                       <Link href="/admin/dashboard">
                         <LayoutDashboard />
                         <span>Dashboard</span>
+                      </Link>
+                    }
+                  />
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    isActive={pathname.startsWith("/admin/login-settings")}
+                    render={
+                      <Link href="/admin/login-settings">
+                        <ShieldCheck />
+                        <span>Login</span>
                       </Link>
                     }
                   />
