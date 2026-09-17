@@ -6,9 +6,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { ApiError, apiClient } from "@/lib/api-client";
+import { useSession } from "@/lib/session-context";
 import type { NotificationPreferences } from "@/lib/settings/types";
 
 export default function SettingsPage() {
+  const session = useSession();
+  const isAgentOrAdmin = session.role === "AGENT" || session.role === "ADMIN";
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
 
@@ -97,22 +100,24 @@ export default function SettingsPage() {
                 />
               </div>
 
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex flex-col gap-0.5">
-                  <Label htmlFor="email-sla-warning" className="font-normal">
-                    Aviso de SLA
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    Aviso quando um chamado seu estiver perto de estourar o prazo de SLA.
-                  </p>
+              {isAgentOrAdmin && (
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex flex-col gap-0.5">
+                    <Label htmlFor="email-sla-warning" className="font-normal">
+                      Aviso de SLA
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Aviso quando um chamado atribuído a você estiver perto de estourar o prazo de SLA.
+                    </p>
+                  </div>
+                  <Switch
+                    id="email-sla-warning"
+                    checked={query.data.emailOnSlaWarning}
+                    onCheckedChange={(checked) => mutation.mutate({ emailOnSlaWarning: checked })}
+                    disabled={mutation.isPending}
+                  />
                 </div>
-                <Switch
-                  id="email-sla-warning"
-                  checked={query.data.emailOnSlaWarning}
-                  onCheckedChange={(checked) => mutation.mutate({ emailOnSlaWarning: checked })}
-                  disabled={mutation.isPending}
-                />
-              </div>
+              )}
             </div>
           )}
           {error && (
