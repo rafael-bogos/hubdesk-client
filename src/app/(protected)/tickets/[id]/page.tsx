@@ -8,6 +8,7 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { BackToTicketsLink } from "@/components/tickets/back-to-tickets-link";
 import { PriorityBadge } from "@/components/tickets/priority-badge";
+import { SlaBadge } from "@/components/tickets/sla-badge";
 import { StatusBadge } from "@/components/tickets/status-badge";
 import { TicketConversation } from "@/components/tickets/ticket-conversation";
 import { Button } from "@/components/ui/button";
@@ -211,6 +212,7 @@ function TicketDetailsPanel({
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={ticket.status} />
           <PriorityBadge priority={ticket.priority} />
+          {ticket.sla && ticket.status !== "RESOLVED" && <SlaBadge sla={ticket.sla} />}
         </div>
       </div>
 
@@ -223,6 +225,15 @@ function TicketDetailsPanel({
           <dt className="text-xs text-muted-foreground">Aberto em</dt>
           <dd>{formatDateTime(ticket.createdAt)}</dd>
         </div>
+        {ticket.sla && ticket.status !== "RESOLVED" && (
+          <div className="flex flex-col gap-0.5">
+            <dt className="text-xs text-muted-foreground">Prazo de SLA</dt>
+            <dd>
+              {formatDateTime(ticket.sla.dueAt)}
+              {ticket.sla.pausedAt && " · pausado (aguardando solicitante)"}
+            </dd>
+          </div>
+        )}
         {ticket.category && (
           <div className="flex flex-col gap-0.5">
             <dt className="text-xs text-muted-foreground">Categoria</dt>

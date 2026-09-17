@@ -17,6 +17,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { PriorityBadge } from "@/components/tickets/priority-badge";
+import { SlaBadge } from "@/components/tickets/sla-badge";
 import { StatusDot } from "@/components/tickets/status-badge";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -543,7 +544,12 @@ export default function TicketsPage() {
                               <span className="text-muted-foreground">#{ticket.number}</span>{" "}
                               <span className="font-medium">{ticket.title}</span>
                             </span>
-                            <PriorityBadge priority={ticket.priority} />
+                            <div className="flex shrink-0 items-center gap-1.5">
+                              {ticket.sla && ticket.status !== "RESOLVED" && (
+                                <SlaBadge sla={ticket.sla} />
+                              )}
+                              <PriorityBadge priority={ticket.priority} />
+                            </div>
                           </div>
                           <div className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
                             <span className="truncate">

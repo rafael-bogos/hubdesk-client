@@ -15,6 +15,17 @@ export const ACTIVE_TICKET_STATUSES: TicketStatus[] = ["OPEN", "IN_PROGRESS", "W
 
 export const TICKET_PRIORITIES: TicketPriority[] = ["LOW", "MEDIUM", "HIGH", "URGENT"];
 
+export type SlaState = "ok" | "near_breach" | "breached";
+
+export interface TicketSlaSummary {
+  dueAt: string;
+  state: SlaState;
+  percentConsumed: number;
+  // Enquanto o chamado estiver em WAITING (relógio de SLA congelado) — null
+  // fora disso.
+  pausedAt: string | null;
+}
+
 export const STATUS_LABELS: Record<TicketStatus, string> = {
   OPEN: "Aberto",
   IN_PROGRESS: "Em andamento",
@@ -61,6 +72,7 @@ export interface Ticket {
   requester?: UserSummary | null;
   assignees?: UserSummary[];
   category?: CategorySummary | null;
+  sla?: TicketSlaSummary;
 }
 
 export interface Comment {

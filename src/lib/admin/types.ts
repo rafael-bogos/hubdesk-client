@@ -65,3 +65,11 @@ export interface AdminLoginSettings {
 
   defaultMethod: DefaultLoginMethod;
 }
+
+export interface AdminSlaSettings {
+  lowPriorityHours: number;
+  mediumPriorityHours: number;
+  highPriorityHours: number;
+  urgentPriorityHours: number;
+  warningThresholdPercent: number;
+}
