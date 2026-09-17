@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Users as UsersIcon } from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { RoleBadge } from "@/components/admin/role-badge";
 import { UserAvatar } from "@/components/user-avatar";
@@ -41,7 +41,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsIndicator, TabsList, TabsTab } from "@/components/ui/tabs";
 import { ApiError, apiClient } from "@/lib/api-client";
-import type { AdminUser, ListUsersResult } from "@/lib/admin/types";
+import type { AdminUser, Category, ListUsersResult } from "@/lib/admin/types";
 import { ROLES, ROLE_LABELS } from "@/lib/roles";
 import { useSession } from "@/lib/session-context";
 import { formatDateTime } from "@/lib/tickets/format";
@@ -61,6 +61,7 @@ const updateUserSchema = z.object({
   email: z.string().email("E-mail inválido"),
   role: z.enum(["ADMIN", "AGENT", "CUSTOMER"]),
   active: z.boolean(),
+  categoryIds: z.array(z.string()),
 });
 
 type CreateUserValues = z.infer<typeof createUserSchema>;
@@ -91,6 +92,14 @@ export default function AdminUsersPage() {
       if (roleFilter !== ALL) params.set("role", roleFilter);
       return apiClient.get<ListUsersResult>(`admin/users?${params.toString()}`);
     },
+  });
+
+  // Usado só pelo formulário de edição, pra montar a lista de categorias que
+  // dá pra restringir um agent — carregado aqui pra já vir pronto quando o
+  // diálogo abrir.
+  const categoriesQuery = useQuery({
+    queryKey: ["admin-categories"],
+    queryFn: () => apiClient.get<Category[]>("admin/categories"),
   });
 
   function updateFilter(key: "role" | "active", value: string | null) {
@@ -207,7 +216,15 @@ export default function AdminUsersPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <RoleBadge role={user.role} />
+                      <div className="flex items-center gap-1.5">
+                        <RoleBadge role={user.role} />
+                        {user.role === "AGENT" && user.categoryIds.length > 0 && (
+                          <Badge variant="outline" title="Restrito a categorias específicas">
+                            {user.categoryIds.length}{" "}
+                            {user.categoryIds.length === 1 ? "categoria" : "categorias"}
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       {user.active ? (
@@ -293,6 +310,7 @@ export default function AdminUsersPage() {
           {editingUser && (
             <EditUserForm
               user={editingUser}
+              categories={categoriesQuery.data ?? []}
               onSuccess={() => {
                 setEditingUser(null);
                 invalidate();
@@ -406,7 +424,15 @@ function CreateUserForm({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-function EditUserForm({ user, onSuccess }: { user: AdminUser; onSuccess: () => void }) {
+function EditUserForm({
+  user,
+  categories,
+  onSuccess,
+}: {
+  user: AdminUser;
+  categories: Category[];
+  onSuccess: () => void;
+}) {
   const {
     register,
     handleSubmit,
@@ -421,12 +447,21 @@ function EditUserForm({ user, onSuccess }: { user: AdminUser; onSuccess: () => v
       email: user.email,
       role: user.role,
       active: user.active,
+      categoryIds: user.categoryIds,
     },
   });
 
   useEffect(() => {
-    reset({ name: user.name, email: user.email, role: user.role, active: user.active });
+    reset({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      active: user.active,
+      categoryIds: user.categoryIds,
+    });
   }, [user, reset]);
+
+  const role = useWatch({ control, name: "role" });
 
   const mutation = useMutation({
     mutationFn: (values: UpdateUserValues) =>
@@ -499,6 +534,49 @@ function EditUserForm({ user, onSuccess }: { user: AdminUser; onSuccess: () => v
             Usuário ativo
           </Label>
         </div>
+
+        {role === "AGENT" && (
+          <div className="flex flex-col gap-1.5">
+            <Label>Categorias permitidas</Label>
+            <p className="text-xs text-muted-foreground">
+              Restringe este atendente a só ver/se atribuir a chamados sem responsável dessas
+              categorias. Nenhuma marcada = sem restrição (vê tudo).
+            </p>
+            <Controller
+              name="categoryIds"
+              control={control}
+              render={({ field }) => (
+                <div className="flex flex-col gap-2 rounded-md border p-3">
+                  {categories.length === 0 && (
+                    <p className="text-sm text-muted-foreground">Nenhuma categoria cadastrada.</p>
+                  )}
+                  {categories.map((category) => {
+                    const checked = field.value.includes(category.id);
+                    return (
+                      <div key={category.id} className="flex items-center gap-2">
+                        <Checkbox
+                          id={`edit-category-${category.id}`}
+                          checked={checked}
+                          onCheckedChange={(v) =>
+                            field.onChange(
+                              v === true
+                                ? [...field.value, category.id]
+                                : field.value.filter((id: string) => id !== category.id),
+                            )
+                          }
+                        />
+                        <Label htmlFor={`edit-category-${category.id}`} className="font-normal">
+                          {category.name}
+                        </Label>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            />
+          </div>
+        )}
+
         <p className="text-xs text-muted-foreground">
           Alterar a função ou o status deste usuário invalida imediatamente as sessões ativas dele.
         </p>

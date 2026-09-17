@@ -8,6 +8,9 @@ export interface AdminUser {
   active: boolean;
   createdAt: string;
   updatedAt: string;
+  // Só relevante pra role AGENT — vazio significa sem restrição (vê/pode se
+  // atribuir a chamado sem responsável de qualquer categoria).
+  categoryIds: string[];
 }
 
 export interface ListUsersResult {
