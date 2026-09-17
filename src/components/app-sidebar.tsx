@@ -140,7 +140,7 @@ export function AppSidebar() {
 
       <SidebarFooter className="gap-3 px-3 py-3">
         <div className="flex items-center gap-2 rounded-md px-1 py-1">
-          <UserAvatar name={session.name} className="size-8 shrink-0" />
+          <UserAvatar name={session.name} imageUrl={session.avatarUrl} className="size-8 shrink-0" />
           <div className="flex min-w-0 flex-col">
             <span className="truncate text-sm font-medium">{session.name}</span>
             <span className="text-xs text-muted-foreground">

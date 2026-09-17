@@ -8,6 +8,7 @@ export type SessionUser = {
   name: string;
   email: string;
   role: Role;
+  avatarUrl: string | null;
 };
 
 // Fonte de verdade real da sessão: consulta o backend a cada chamada em vez de

@@ -11,6 +11,7 @@ export interface AdminUser {
   // Só relevante pra role AGENT — vazio significa sem restrição (vê/pode se
   // atribuir a chamado sem responsável de qualquer categoria).
   categoryIds: string[];
+  avatarUrl: string | null;
 }
 
 export interface ListUsersResult {

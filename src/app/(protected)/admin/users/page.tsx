@@ -206,7 +206,7 @@ export default function AdminUsersPage() {
                   <TableRow key={user.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <UserAvatar name={user.name} className="size-8 shrink-0" />
+                        <UserAvatar name={user.name} imageUrl={user.avatarUrl} className="size-8 shrink-0" />
                         <div className="flex min-w-0 flex-col">
                           <span className="truncate font-medium">{user.name}</span>
                           <span className="truncate text-xs text-muted-foreground">

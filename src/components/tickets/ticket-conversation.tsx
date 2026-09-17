@@ -61,17 +61,19 @@ function buildTimeline(comments: Comment[], attachments: Attachment[]): Conversa
 // A API não devolve nome/e-mail do autor do comentário (só o id). Resolvemos
 // pelos participantes que já conhecemos (solicitante, responsável e, para
 // agentes/admins, a lista de agentes) antes de cair no fallback de id curto.
-function resolveAuthorName(
+function resolveAuthor(
   authorId: string,
   ticket: Ticket,
   agents: UserSummary[] | undefined,
-): string {
-  if (ticket.requester?.id === authorId) return ticket.requester.name;
+): { name: string; avatarUrl: string | null } {
+  if (ticket.requester?.id === authorId) {
+    return { name: ticket.requester.name, avatarUrl: ticket.requester.avatarUrl };
+  }
   const assignee = ticket.assignees?.find((candidate) => candidate.id === authorId);
-  if (assignee) return assignee.name;
+  if (assignee) return { name: assignee.name, avatarUrl: assignee.avatarUrl };
   const agent = agents?.find((candidate) => candidate.id === authorId);
-  if (agent) return agent.name;
-  return `Usuário ${shortId(authorId)}`;
+  if (agent) return { name: agent.name, avatarUrl: agent.avatarUrl };
+  return { name: `Usuário ${shortId(authorId)}`, avatarUrl: null };
 }
 
 export function TicketConversation({
@@ -204,7 +206,8 @@ export function TicketConversation({
           )}
           {timeline.map((entry, index) => {
             const authorId = entry.kind === "comment" ? entry.comment.authorId : entry.attachment.uploadedById;
-            const authorName = resolveAuthorName(authorId, ticket, agents);
+            const author = resolveAuthor(authorId, ticket, agents);
+            const authorName = author.name;
             const isOwn = authorId === session.id;
             const createdAt = entry.kind === "comment" ? entry.comment.createdAt : entry.attachment.createdAt;
 
@@ -238,7 +241,7 @@ export function TicketConversation({
                 {isGrouped ? (
                   <div className="size-7 shrink-0" aria-hidden="true" />
                 ) : (
-                  <UserAvatar name={authorName} className="mt-0.5 size-7 shrink-0" />
+                  <UserAvatar name={authorName} imageUrl={author.avatarUrl} className="mt-0.5 size-7 shrink-0" />
                 )}
                 <div className={cn("flex min-w-0 max-w-[80%] flex-col gap-1", isOwn && "items-end")}>
                   {!isGrouped && (

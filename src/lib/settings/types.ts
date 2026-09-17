@@ -3,3 +3,8 @@ export interface NotificationPreferences {
   emailOnTicketClosed: boolean;
   emailOnSlaWarning: boolean;
 }
+
+export interface UserProfile {
+  name: string;
+  avatarUrl: string | null;
+}

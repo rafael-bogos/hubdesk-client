@@ -374,13 +374,14 @@ function TicketDetailsPanel({
               {ticket.assigneeIds.length > 0 && (
                 <ul className="flex flex-col gap-1.5">
                   {ticket.assigneeIds.map((assigneeId) => {
-                    const name = agents?.find((agent) => agent.id === assigneeId)?.name ?? shortId(assigneeId);
+                    const assignedAgent = agents?.find((agent) => agent.id === assigneeId);
+                    const name = assignedAgent?.name ?? shortId(assigneeId);
                     return (
                       <li
                         key={assigneeId}
                         className="flex items-center gap-2 rounded-lg border px-2 py-1.5 text-sm"
                       >
-                        <UserAvatar name={name} className="size-6 shrink-0" />
+                        <UserAvatar name={name} imageUrl={assignedAgent?.avatarUrl} className="size-6 shrink-0" />
                         <span className="min-w-0 flex-1 truncate">{name}</span>
                         <Button
                           type="button"
