@@ -292,7 +292,7 @@ export default function NewTicketPage() {
             </div>
 
             {customFields.length > 0 && (
-              <div className="flex flex-col gap-4 rounded-md border p-3">
+              <div className="flex min-w-0 flex-col gap-4 rounded-md border p-3">
                 <p className="text-sm font-medium">Campos da categoria</p>
                 {customFields.map((field) => (
                   <CustomFieldInput

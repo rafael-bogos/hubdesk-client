@@ -2,9 +2,19 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, Eye, EyeOff, ListChecks, Pencil, Trash2 } from "lucide-react";
-import { useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import {
+  ArrowDown,
+  ArrowUp,
+  Eye,
+  EyeOff,
+  ListChecks,
+  Pencil,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,7 +43,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
 import { ApiError, apiClient } from "@/lib/api-client";
 import {
   CUSTOM_FIELD_TYPE_LABELS,
@@ -48,16 +57,13 @@ const fieldSchema = z
     label: z.string().min(1, "Nome do campo é obrigatório"),
     type: z.enum(["TEXT", "NUMBER", "BOOLEAN", "DATE", "SELECT", "ATTACHMENT"]),
     required: z.boolean(),
-    optionsText: z.string(),
+    options: z.array(z.object({ value: z.string() })),
   })
   .refine(
     (data) =>
       data.type !== "SELECT" ||
-      data.optionsText
-        .split("\n")
-        .map((option) => option.trim())
-        .filter(Boolean).length >= 2,
-    { message: "Informe ao menos duas opções (uma por linha)", path: ["optionsText"] },
+      (data.options.length >= 2 && data.options.every((option) => option.value.trim().length > 0)),
+    { message: "Informe ao menos duas opções preenchidas", path: ["options"] },
   );
 
 type FieldValues = z.infer<typeof fieldSchema>;
@@ -75,7 +81,7 @@ export function CategoryFieldsDialog({ category }: { category: Category }) {
           </Button>
         }
       />
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Campos personalizados — {category.name}</DialogTitle>
         </DialogHeader>
@@ -301,11 +307,25 @@ function CategoryFieldForm({
       label: field?.label ?? "",
       type: field?.type ?? "TEXT",
       required: field?.required ?? false,
-      optionsText: field?.options?.join("\n") ?? "",
+      options: field?.options?.map((value) => ({ value })) ?? [],
     },
   });
 
   const type = watch("type");
+  const {
+    fields: optionFields,
+    append: appendOption,
+    remove: removeOption,
+  } = useFieldArray({ control, name: "options" });
+
+  // Ao escolher "Seleção" sem nenhuma opção ainda (campo novo, ou trocando de
+  // outro tipo), já começa com duas linhas em branco pro admin preencher —
+  // é o mínimo exigido mesmo.
+  useEffect(() => {
+    if (type === "SELECT" && optionFields.length === 0) {
+      appendOption([{ value: "" }, { value: "" }]);
+    }
+  }, [type, optionFields.length, appendOption]);
 
   const mutation = useMutation({
     mutationFn: (values: FieldValues) => {
@@ -315,10 +335,7 @@ function CategoryFieldForm({
         required: values.required,
         options:
           values.type === "SELECT"
-            ? values.optionsText
-                .split("\n")
-                .map((option) => option.trim())
-                .filter(Boolean)
+            ? values.options.map((option) => option.value.trim()).filter(Boolean)
             : undefined,
       };
 
@@ -376,10 +393,41 @@ function CategoryFieldForm({
 
       {type === "SELECT" && (
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="field-options">Opções (uma por linha)</Label>
-          <Textarea id="field-options" rows={4} {...register("optionsText")} />
-          {errors.optionsText && (
-            <p className="text-sm text-destructive">{errors.optionsText.message}</p>
+          <Label>Opções</Label>
+          <div className="flex flex-col gap-2">
+            {optionFields.map((optionField, index) => (
+              <div key={optionField.id} className="flex items-center gap-2">
+                <Input
+                  {...register(`options.${index}.value` as const)}
+                  placeholder={`Opção ${index + 1}`}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="shrink-0"
+                  disabled={optionFields.length <= 2}
+                  onClick={() => removeOption(index)}
+                  title="Remover opção"
+                >
+                  <X className="size-3.5" aria-hidden="true" />
+                  <span className="sr-only">Remover opção</span>
+                </Button>
+              </div>
+            ))}
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-fit"
+            onClick={() => appendOption({ value: "" })}
+          >
+            <Plus className="size-3.5" aria-hidden="true" />
+            Adicionar opção
+          </Button>
+          {errors.options && (
+            <p className="text-sm text-destructive">{errors.options.message}</p>
           )}
         </div>
       )}

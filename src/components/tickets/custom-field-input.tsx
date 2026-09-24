@@ -36,8 +36,15 @@ export function CustomFieldInput({
   const labelText = field.required ? `${field.label} *` : field.label;
 
   return (
-    <div className="flex flex-col gap-1.5">
-      {field.type !== "BOOLEAN" && <Label htmlFor={inputId}>{labelText}</Label>}
+    <div className="flex min-w-0 flex-col gap-1.5">
+      {field.type !== "BOOLEAN" && (
+        // Sobrescreve o `display: flex` padrão do Label — aqui é só texto (sem
+        // ícone), e como item flex ele podia recusar a quebrar linha mesmo com
+        // `break-words`. Como bloco normal, o texto quebra do jeito esperado.
+        <Label htmlFor={inputId} className="block w-full min-w-0 break-words whitespace-normal">
+          {labelText}
+        </Label>
+      )}
 
       {field.type === "TEXT" && (
         <Input
@@ -66,13 +73,19 @@ export function CustomFieldInput({
       )}
 
       {field.type === "BOOLEAN" && (
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 items-start gap-2">
           <Checkbox
             id={inputId}
             checked={value === true}
             onCheckedChange={(v) => onChange(v === true)}
+            className="mt-0.5 shrink-0"
           />
-          <Label htmlFor={inputId} className="font-normal">
+          {/* Mesma correção do Label acima: bloco normal em vez de flex, pra
+              quebrar linha de verdade quando o texto for grande. */}
+          <Label
+            htmlFor={inputId}
+            className="block min-w-0 flex-1 font-normal break-words whitespace-normal"
+          >
             {labelText}
           </Label>
         </div>
