@@ -29,6 +29,40 @@ export interface Category {
   updatedAt: string;
 }
 
+export type CustomFieldType = "TEXT" | "NUMBER" | "BOOLEAN" | "DATE" | "SELECT" | "ATTACHMENT";
+
+export const CUSTOM_FIELD_TYPES: CustomFieldType[] = [
+  "TEXT",
+  "NUMBER",
+  "BOOLEAN",
+  "DATE",
+  "SELECT",
+  "ATTACHMENT",
+];
+
+export const CUSTOM_FIELD_TYPE_LABELS: Record<CustomFieldType, string> = {
+  TEXT: "Texto",
+  NUMBER: "Número",
+  BOOLEAN: "Sim/Não",
+  DATE: "Data",
+  SELECT: "Seleção",
+  ATTACHMENT: "Anexo",
+};
+
+export interface CategoryCustomField {
+  id: string;
+  categoryId: string;
+  label: string;
+  type: CustomFieldType;
+  required: boolean;
+  // Só relevante quando type = "SELECT".
+  options: string[] | null;
+  active: boolean;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AgentTicketCount {
   agentId: string;
   agentName: string;

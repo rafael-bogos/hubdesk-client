@@ -27,15 +27,79 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { UserAvatar } from "@/components/user-avatar";
 import { apiClient } from "@/lib/api-client";
 import { useSession } from "@/lib/session-context";
+import { attachmentDownloadUrl } from "@/lib/tickets/attachments";
 import { formatDateTime, shortId, toDatetimeLocalValue } from "@/lib/tickets/format";
 import {
   STATUS_LABELS,
   TICKET_STATUSES,
   type Ticket,
+  type TicketCustomFieldValue,
   type TicketDetail,
   type TicketStatus,
   type UserSummary,
 } from "@/lib/tickets/types";
+
+function formatCustomFieldValue(ticketNumber: number, value: TicketCustomFieldValue) {
+  if (value.field.type === "ATTACHMENT") {
+    if (!value.attachment) return "—";
+    return (
+      <a
+        href={attachmentDownloadUrl(ticketNumber, value.attachment.id)}
+        target="_blank"
+        rel="noreferrer"
+        className="text-primary underline-offset-2 hover:underline"
+      >
+        {value.attachment.filename}
+      </a>
+    );
+  }
+
+  if (value.field.type === "BOOLEAN") {
+    return value.value === "true" ? "Sim" : "Não";
+  }
+
+  return value.value || "—";
+}
+
+// Texto puro correspondente ao que formatCustomFieldValue renderiza — usado
+// no title (tooltip) do valor truncado e no botão de copiar.
+function customFieldValueText(value: TicketCustomFieldValue): string {
+  if (value.field.type === "ATTACHMENT") return value.attachment?.filename ?? "";
+  if (value.field.type === "BOOLEAN") return value.value === "true" ? "Sim" : "Não";
+  return value.value ?? "";
+}
+
+function CopyValueButton({ value }: { value: string }) {
+  const [isCopied, setIsCopied] = useState(false);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 1500);
+    } catch {
+      // clipboard indisponível (ex: contexto não seguro); sem feedback de erro por ora.
+    }
+  };
+
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon-xs"
+      className="shrink-0"
+      onClick={copy}
+      title="Copiar valor"
+    >
+      {isCopied ? (
+        <Check className="size-3.5" aria-hidden="true" />
+      ) : (
+        <Copy className="size-3.5" aria-hidden="true" />
+      )}
+      <span className="sr-only">Copiar valor</span>
+    </Button>
+  );
+}
 
 export default function TicketDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -102,7 +166,7 @@ export default function TicketDetailPage() {
     );
   }
 
-  const { ticket, comments, attachments } = query.data;
+  const { ticket, comments, attachments, customFieldValues } = query.data;
 
   return (
     <div className="flex h-full min-h-0">
@@ -146,9 +210,10 @@ export default function TicketDetailPage() {
         />
       </div>
 
-      <aside className="hidden w-80 shrink-0 flex-col overflow-y-auto border-l lg:flex xl:w-96">
+      <aside className="hidden w-80 min-w-0 shrink-0 flex-col overflow-y-auto border-l lg:flex xl:w-96">
         <TicketDetailsPanel
           ticket={ticket}
+          customFieldValues={customFieldValues}
           isAgentOrAdmin={isAgentOrAdmin}
           agents={agentsQuery.data}
           onChange={invalidate}
@@ -162,6 +227,7 @@ export default function TicketDetailPage() {
           </SheetHeader>
           <TicketDetailsPanel
             ticket={ticket}
+            customFieldValues={customFieldValues}
             isAgentOrAdmin={isAgentOrAdmin}
             agents={agentsQuery.data}
             onChange={invalidate}
@@ -174,11 +240,13 @@ export default function TicketDetailPage() {
 
 function TicketDetailsPanel({
   ticket,
+  customFieldValues,
   isAgentOrAdmin,
   agents,
   onChange,
 }: {
   ticket: Ticket;
+  customFieldValues: TicketCustomFieldValue[];
   isAgentOrAdmin: boolean;
   agents: UserSummary[] | undefined;
   onChange: () => void;
@@ -205,10 +273,10 @@ function TicketDetailsPanel({
   });
 
   return (
-    <div className="flex flex-col gap-5 p-5">
-      <div className="flex flex-col gap-2">
+    <div className="flex min-w-0 flex-col gap-5 p-5">
+      <div className="flex min-w-0 flex-col gap-2">
         <span className="text-xs text-muted-foreground">Chamado #{ticket.number}</span>
-        <h2 className="font-heading text-base leading-snug font-medium">{ticket.title}</h2>
+        <h2 className="font-heading text-base leading-snug font-medium break-words">{ticket.title}</h2>
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={ticket.status} />
           <PriorityBadge priority={ticket.priority} />
@@ -216,38 +284,45 @@ function TicketDetailsPanel({
         </div>
       </div>
 
-      <dl className="flex flex-col gap-3 text-sm">
-        <div className="flex flex-col gap-0.5">
+      <dl className="flex min-w-0 flex-col gap-3 text-sm">
+        <div className="flex min-w-0 flex-col gap-0.5">
           <dt className="text-xs text-muted-foreground">Solicitante</dt>
-          <dd>{ticket.requester?.name ?? shortId(ticket.requesterId)}</dd>
+          <dd className="break-words">{ticket.requester?.name ?? shortId(ticket.requesterId)}</dd>
         </div>
-        <div className="flex flex-col gap-0.5">
+        <div className="flex min-w-0 flex-col gap-0.5">
           <dt className="text-xs text-muted-foreground">Aberto em</dt>
-          <dd>{formatDateTime(ticket.createdAt)}</dd>
+          <dd className="break-words">{formatDateTime(ticket.createdAt)}</dd>
         </div>
         {ticket.sla && ticket.status !== "RESOLVED" && (
-          <div className="flex flex-col gap-0.5">
+          <div className="flex min-w-0 flex-col gap-0.5">
             <dt className="text-xs text-muted-foreground">Prazo de SLA</dt>
-            <dd>
+            <dd className="break-words">
               {formatDateTime(ticket.sla.dueAt)}
               {ticket.sla.pausedAt && " · pausado (aguardando solicitante)"}
             </dd>
           </div>
         )}
         {ticket.category && (
-          <div className="flex flex-col gap-0.5">
+          <div className="flex min-w-0 flex-col gap-0.5">
             <dt className="text-xs text-muted-foreground">Categoria</dt>
-            <dd>{ticket.category.name}</dd>
+            <dd className="break-words">{ticket.category.name}</dd>
           </div>
         )}
+        {customFieldValues.map((value) => {
+          const text = customFieldValueText(value);
+          return (
+            <div key={value.id} className="flex min-w-0 flex-col gap-0.5">
+              <dt className="text-xs text-muted-foreground break-words">{value.field.label}</dt>
+              <dd className="flex min-w-0 items-center gap-1">
+                <span className="min-w-0 flex-1 truncate" title={text || undefined}>
+                  {formatCustomFieldValue(ticket.number, value)}
+                </span>
+                {text && value.field.type !== "ATTACHMENT" && <CopyValueButton value={text} />}
+              </dd>
+            </div>
+          );
+        })}
       </dl>
-
-      <Separator />
-
-      <div className="flex flex-col gap-1.5">
-        <h3 className="text-xs font-medium text-muted-foreground">Descrição</h3>
-        <p className="whitespace-pre-wrap text-sm">{ticket.description}</p>
-      </div>
 
       {isAgentOrAdmin && (
         <>

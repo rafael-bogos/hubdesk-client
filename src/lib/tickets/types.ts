@@ -53,11 +53,35 @@ export interface CategorySummary {
   name: string;
 }
 
+export type CustomFieldType = "TEXT" | "NUMBER" | "BOOLEAN" | "DATE" | "SELECT" | "ATTACHMENT";
+
+export interface CategoryCustomField {
+  id: string;
+  categoryId: string;
+  label: string;
+  type: CustomFieldType;
+  required: boolean;
+  // Só presente quando type = "SELECT".
+  options: string[] | null;
+}
+
+export interface CustomFieldAttachmentSummary {
+  id: string;
+  filename: string;
+}
+
+export interface TicketCustomFieldValue {
+  id: string;
+  fieldId: string;
+  value: string | null;
+  field: { label: string; type: CustomFieldType };
+  attachment: CustomFieldAttachmentSummary | null;
+}
+
 export interface Ticket {
   id: string;
   number: number;
   title: string;
-  description: string;
   status: TicketStatus;
   priority: TicketPriority;
   requesterId: string;
@@ -108,4 +132,5 @@ export interface TicketDetail {
   ticket: Ticket;
   comments: Comment[];
   attachments: Attachment[];
+  customFieldValues: TicketCustomFieldValue[];
 }

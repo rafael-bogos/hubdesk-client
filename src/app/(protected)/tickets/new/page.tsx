@@ -4,10 +4,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Paperclip } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { BackToTicketsLink } from "@/components/tickets/back-to-tickets-link";
+import { CustomFieldInput } from "@/components/tickets/custom-field-input";
 import { StagedFilePreview } from "@/components/tickets/staged-file-preview";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,6 +29,7 @@ import { shortId } from "@/lib/tickets/format";
 import {
   PRIORITY_LABELS,
   TICKET_PRIORITIES,
+  type CategoryCustomField,
   type CategorySummary,
   type Ticket,
   type UserSummary,
@@ -35,7 +37,7 @@ import {
 
 const createTicketSchema = z.object({
   title: z.string().min(3, "Título deve ter ao menos 3 caracteres"),
-  description: z.string().min(1, "Descrição é obrigatória"),
+  message: z.string().min(1, "Mensagem é obrigatória"),
   priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]),
   categoryId: z.string(),
 });
@@ -72,12 +74,56 @@ export default function NewTicketPage() {
     register,
     handleSubmit,
     control,
+    watch,
     setError,
     formState: { errors, isSubmitting },
   } = useForm<CreateTicketValues>({
     resolver: zodResolver(createTicketSchema),
     defaultValues: { priority: "MEDIUM", categoryId: "" },
   });
+
+  const categoryId = watch("categoryId");
+
+  const categoryFieldsQuery = useQuery({
+    queryKey: ["category-fields", categoryId],
+    queryFn: () => apiClient.get<CategoryCustomField[]>(`categories/${categoryId}/fields`),
+    enabled: Boolean(categoryId),
+  });
+  const customFields = categoryId ? (categoryFieldsQuery.data ?? []) : [];
+
+  const [customFieldValues, setCustomFieldValues] = useState<
+    Record<string, string | number | boolean>
+  >({});
+  const [customFieldFiles, setCustomFieldFiles] = useState<Record<string, File | null>>({});
+  const [customFieldErrors, setCustomFieldErrors] = useState<Record<string, string>>({});
+
+  // Troca de categoria invalida os valores preenchidos pros campos da
+  // categoria anterior — evita mandar valor de campo que nem existe mais
+  // pra categoria escolhida agora.
+  useEffect(() => {
+    setCustomFieldValues({});
+    setCustomFieldFiles({});
+    setCustomFieldErrors({});
+  }, [categoryId]);
+
+  const validateCustomFields = () => {
+    const nextErrors: Record<string, string> = {};
+    for (const field of customFields) {
+      if (field.type === "ATTACHMENT") {
+        if (field.required && !customFieldFiles[field.id]) {
+          nextErrors[field.id] = `${field.label} é obrigatório`;
+        }
+        continue;
+      }
+      const value = customFieldValues[field.id];
+      const hasValue = value !== undefined && value !== null && String(value).trim() !== "";
+      if (field.required && !hasValue) {
+        nextErrors[field.id] = `${field.label} é obrigatório`;
+      }
+    }
+    setCustomFieldErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
 
   const addFiles = (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -90,14 +136,24 @@ export default function NewTicketPage() {
 
   const mutation = useMutation({
     mutationFn: async (values: CreateTicketValues) => {
+      const customFieldPayload: Record<string, string | number | boolean> = {};
+      for (const field of customFields) {
+        if (field.type === "ATTACHMENT") continue;
+        const raw = customFieldValues[field.id];
+        if (raw === undefined || raw === null || String(raw).trim() === "") continue;
+        customFieldPayload[field.id] = raw;
+      }
+
       const ticket = await apiClient.post<Ticket>("tickets", {
         ...values,
         categoryId: values.categoryId || undefined,
+        customFieldValues:
+          Object.keys(customFieldPayload).length > 0 ? customFieldPayload : undefined,
       });
 
-      // Responsáveis e anexos são passos secundários: o chamado já foi criado
-      // nesse ponto, então uma falha aqui não deve impedir a navegação — dá
-      // pra ajustar depois pela tela de detalhes.
+      // Responsáveis, anexos e campos do tipo anexo são passos secundários: o
+      // chamado já foi criado nesse ponto, então uma falha aqui não deve
+      // impedir a navegação — dá pra ajustar depois pela tela de detalhes.
       if (isAgentOrAdmin && assigneeIds.length > 0) {
         try {
           await apiClient.patch(`tickets/${ticket.number}/assign`, { assigneeIds });
@@ -110,6 +166,20 @@ export default function NewTicketPage() {
         try {
           const formData = new FormData();
           formData.append("file", file);
+          await apiClient.post(`tickets/${ticket.number}/attachments`, formData);
+        } catch {
+          // ignorado de propósito, ver comentário acima
+        }
+      }
+
+      for (const field of customFields) {
+        if (field.type !== "ATTACHMENT") continue;
+        const file = customFieldFiles[field.id];
+        if (!file) continue;
+        try {
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("fieldId", field.id);
           await apiClient.post(`tickets/${ticket.number}/attachments`, formData);
         } catch {
           // ignorado de propósito, ver comentário acima
@@ -143,6 +213,7 @@ export default function NewTicketPage() {
                 setError("categoryId", { message: "Categoria é obrigatória" });
                 return;
               }
+              if (!validateCustomFields()) return;
               mutation.mutate(values);
             })}
           >
@@ -153,10 +224,10 @@ export default function NewTicketPage() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="description">Descrição</Label>
-              <Textarea id="description" rows={5} {...register("description")} />
-              {errors.description && (
-                <p className="text-sm text-destructive">{errors.description.message}</p>
+              <Label htmlFor="message">Mensagem</Label>
+              <Textarea id="message" rows={5} {...register("message")} />
+              {errors.message && (
+                <p className="text-sm text-destructive">{errors.message.message}</p>
               )}
             </div>
 
@@ -219,6 +290,27 @@ export default function NewTicketPage() {
                 <p className="text-sm text-destructive">{errors.categoryId.message}</p>
               )}
             </div>
+
+            {customFields.length > 0 && (
+              <div className="flex flex-col gap-4 rounded-md border p-3">
+                <p className="text-sm font-medium">Campos da categoria</p>
+                {customFields.map((field) => (
+                  <CustomFieldInput
+                    key={field.id}
+                    field={field}
+                    value={customFieldValues[field.id]}
+                    file={customFieldFiles[field.id] ?? null}
+                    error={customFieldErrors[field.id]}
+                    onChange={(value) =>
+                      setCustomFieldValues((prev) => ({ ...prev, [field.id]: value }))
+                    }
+                    onFileChange={(file) =>
+                      setCustomFieldFiles((prev) => ({ ...prev, [field.id]: file }))
+                    }
+                  />
+                ))}
+              </div>
+            )}
 
             {isAgentOrAdmin && (
               <div className="flex flex-col gap-1.5">

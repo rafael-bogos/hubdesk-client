@@ -26,6 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { CategoryFieldsDialog } from "@/components/admin/category-fields-dialog";
 import { ApiError, apiClient } from "@/lib/api-client";
 import type { Category } from "@/lib/admin/types";
 
@@ -99,9 +100,12 @@ export default function AdminCategoriesPage() {
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="outline" size="sm" onClick={() => setEditingCategory(category)}>
-                      Editar
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      <CategoryFieldsDialog category={category} />
+                      <Button variant="outline" size="sm" onClick={() => setEditingCategory(category)}>
+                        Editar
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
